@@ -1,4 +1,5 @@
 import { TokenType } from "./token.js";
+import { CodeStyle } from "../index.js";
 const KEYWORDS = {
     "if": TokenType.IF,
     "else": TokenType.ELSE,
@@ -10,12 +11,7 @@ const BLOCK_OPENERS = new Set([
     TokenType.ELSE,
     TokenType.WHILE,
 ]);
-export var CodeStyle;
-(function (CodeStyle) {
-    CodeStyle["INDENT"] = "INDENT";
-    CodeStyle["CURLY_BRACES"] = "CURLY_BRACES";
-})(CodeStyle || (CodeStyle = {}));
-// Lexer Class
+// Lexer Class - converts source code into tokens
 export class Lexer {
     constructor(sourceCode, codeStyle) {
         this.position = 0;
@@ -183,6 +179,9 @@ export class Lexer {
             value += this.advance();
         }
         const lower = value.toLowerCase();
+        if (lower === "true" || lower === "false") {
+            return this.makeToken(TokenType.BOOLEAN, lower);
+        }
         const type = KEYWORDS[lower] || TokenType.IDENTIFIER; // Either a keyword or an identifier
         if (this.codeStyle === CodeStyle.INDENT && BLOCK_OPENERS.has(type)) {
             this.expectedIndent = true;
