@@ -1,4 +1,5 @@
 import { TokenType } from "../lexer/token.js";
+import { CodeStyle } from "../index.js";
 // Parser Class - converts tokens into AST
 export class Parser {
     constructor(tokens, codeStyle) {
@@ -9,7 +10,11 @@ export class Parser {
     parse() {
         const statements = [];
         while (!this.isAtEnd()) {
+            this.skipNewlinesAndSemicolons();
+            if (this.isAtEnd())
+                break;
             statements.push(this.parseStatement());
+            this.skipNewlinesAndSemicolons();
         }
         return {
             type: "Program",
@@ -51,30 +56,112 @@ export class Parser {
     isAtEnd() {
         return this.peek().type === TokenType.EOF;
     }
+    consumeStatementTerminator() {
+        if (this.isAtEnd())
+            return;
+        if (this.codeStyle === CodeStyle.INDENT) {
+            this.consume(TokenType.NEWLINE, "Formatting Error: Expected newline after statement at line " + this.peek().line);
+            return;
+        }
+        else if (this.codeStyle === CodeStyle.CURLY_BRACES) {
+            if (this.checkType(TokenType.SEMI_COLON)) {
+                return;
+            }
+            if (this.checkType(TokenType.NEWLINE)) {
+                return;
+            }
+            if (this.checkType(TokenType.RIGHT_CURLY)) {
+                return;
+            }
+        }
+        throw new Error("Syntax Error: Expected ';' or newline after statement at line " + this.peek().line);
+    }
+    beginBlock(line, column) {
+        if (this.codeStyle === CodeStyle.INDENT) {
+            this.consume(TokenType.NEWLINE, "Formatting Error: Expected newline before block at line " + line);
+            this.consume(TokenType.INDENT, "Formatting Error: Expected an indent at line " + line);
+        }
+        else {
+            this.skipNewlines();
+            this.consume(TokenType.LEFT_CURLY, "Syntax Error: Expected '{' to begin block at line " + line + ", column " + (column - 1));
+        }
+    }
+    endBlock() {
+        if (this.codeStyle === CodeStyle.INDENT) {
+            if (!this.isAtEnd()) {
+                this.consume(TokenType.DEDENT, "Formatting Error: Expected dedent to end block at line " + this.peek().line + ", column " + this.peek().column);
+            }
+        }
+        else {
+            this.consume(TokenType.RIGHT_CURLY, "Syntax Error: Expected '}' to end block at line " + this.peek().line + ", column " + this.peek().column);
+        }
+    }
+    parseBlock() {
+        this.beginBlock(this.peek().line, this.peek().column);
+        const statements = [];
+        while (!this.isAtBlockEnd() && !this.isAtEnd()) {
+            this.skipNewlinesAndSemicolons();
+            if (this.isAtBlockEnd())
+                break;
+            statements.push(this.parseStatement());
+        }
+        this.endBlock();
+        return statements;
+    }
+    isAtBlockEnd() {
+        if (this.codeStyle === CodeStyle.INDENT) {
+            return this.checkType(TokenType.DEDENT);
+        }
+        else {
+            while (this.checkType(TokenType.SEMI_COLON)) {
+                this.advance();
+            }
+            return this.checkType(TokenType.RIGHT_CURLY);
+        }
+    }
+    skipNewlines() {
+        if (this.codeStyle === CodeStyle.CURLY_BRACES) {
+            while (this.checkType(TokenType.NEWLINE)) {
+                this.advance();
+            }
+        }
+    }
+    skipSemicolons() {
+        if (this.codeStyle === CodeStyle.CURLY_BRACES) {
+            while (this.checkType(TokenType.SEMI_COLON)) {
+                this.advance();
+            }
+        }
+    }
+    skipNewlinesAndSemicolons() {
+        if (this.codeStyle === CodeStyle.CURLY_BRACES) {
+            while (this.checkType(TokenType.NEWLINE) || this.checkType(TokenType.SEMI_COLON)) {
+                this.advance();
+            }
+        }
+    }
     parseStatement() {
-        console.log("Parsing statement at token:", this.peek());
+        this.skipNewlinesAndSemicolons();
         if (this.match(TokenType.PRINT)) {
-            console.log("Parsing PRINT statement");
             return this.parsePrintStatement();
         }
         if (this.match(TokenType.IF)) {
-            console.log("Parsing IF statement");
             return this.parseIfStatement();
         }
         if (this.match(TokenType.WHILE)) {
-            console.log("Parsing WHILE statement");
             return this.parseWhileStatement();
         }
-        console.log("Parsing ASSIGNMENT");
-        return this.parseAssignment();
+        if (this.checkType(TokenType.IDENTIFIER)) {
+            return this.parseAssignment();
+        }
+        console.log(this.peek());
+        throw new Error("Syntax Error: Unexpected '" + this.peek().value + "' at line " + this.peek().line + ", column " + (this.peek().column - this.peek().value.length));
     }
     parseAssignment() {
         const name = this.consume(TokenType.IDENTIFIER, "Expected variable name. Got '" + this.peek().value + "' instead. Line " + this.peek().line + ", Column " + this.peek().column);
-        this.consume(TokenType.EQUALS, "Expected '=' after variable name. Line " + this.peek().line + ", Column " + this.peek().column);
+        this.consume(TokenType.EQUALS, "Syntax Error: Expected '=' after variable name at line " + this.peek().line + ", column " + (this.peek().column - 1));
         const value = this.parseExpression();
-        if (!this.isAtEnd()) {
-            this.consume(TokenType.NEWLINE, "Expected newline after variable assignment. Line " + this.peek().line + ", Column " + this.peek().column);
-        }
+        this.consumeStatementTerminator();
         return {
             type: "VariableAssignment",
             name: name.value,
@@ -83,9 +170,7 @@ export class Parser {
     }
     parsePrintStatement() {
         const expression = this.parseExpression();
-        if (!this.isAtEnd()) {
-            this.consume(TokenType.NEWLINE, "Expected newline after print statement. Line " + this.peek().line + ", Column " + this.peek().column);
-        }
+        this.consumeStatementTerminator();
         return {
             type: "Print",
             expression
@@ -93,27 +178,12 @@ export class Parser {
     }
     parseIfStatement() {
         const condition = this.parseExpression();
-        this.consume(TokenType.NEWLINE, "Expected newline after if condition. Line " + this.peek().line + ", Column " + this.peek().column);
-        this.consume(TokenType.INDENT, "Expected indent after if statement. Line " + this.peek().line + ", Column " + this.peek().column);
-        const thenBody = [];
-        while (!this.checkType(TokenType.DEDENT) && !this.isAtEnd()) {
-            thenBody.push(this.parseStatement());
-        }
-        if (!this.isAtEnd()) {
-            this.consume(TokenType.DEDENT, "Expected dedent after if body. Line " + this.peek().line + ", Column " + this.peek().column);
-        }
+        const thenBody = this.parseBlock();
         // Handle optional else clause
+        this.skipNewlines();
         let elseBody;
         if (this.match(TokenType.ELSE)) {
-            this.consume(TokenType.NEWLINE, "Expected newline after else. Line " + this.peek().line + ", Column " + this.peek().column);
-            this.consume(TokenType.INDENT, "Expected indent after else statement. Line " + this.peek().line + ", Column " + this.peek().column);
-            elseBody = [];
-            while (!this.checkType(TokenType.DEDENT) && !this.isAtEnd()) {
-                elseBody.push(this.parseStatement());
-            }
-            if (!this.isAtEnd()) {
-                this.consume(TokenType.DEDENT, "Expected dedent after else body. Line " + this.peek().line + ", Column " + this.peek().column);
-            }
+            elseBody = this.parseBlock();
         }
         return {
             type: "If",
@@ -124,15 +194,7 @@ export class Parser {
     }
     parseWhileStatement() {
         const condition = this.parseExpression();
-        this.consume(TokenType.NEWLINE, "Expected newline after while condition. Line " + this.peek().line + ", Column " + this.peek().column);
-        this.consume(TokenType.INDENT, "Expected indent after while statement. Line " + this.peek().line + ", Column " + this.peek().column);
-        const body = [];
-        while (!this.checkType(TokenType.DEDENT) && !this.isAtEnd()) {
-            body.push(this.parseStatement());
-        }
-        if (!this.isAtEnd()) {
-            this.consume(TokenType.DEDENT, "Expected dedent after while body. Line " + this.peek().line + ", Column " + this.peek().column);
-        }
+        const body = this.parseBlock();
         return {
             type: "While",
             condition,
@@ -225,9 +287,9 @@ export class Parser {
         }
         if (this.match(TokenType.LEFT_PAREN)) {
             const expr = this.parseExpression();
-            this.consume(TokenType.RIGHT_PAREN, "Expected ')' after expression. Line " + this.peek().line + ", Column " + this.peek().column);
+            this.consume(TokenType.RIGHT_PAREN, "Syntax Error: Expected ')' after expression at line " + this.peek().line + ", column " + this.peek().column);
             return expr;
         }
-        throw new Error("Expected expression. Line " + this.peek().line + ", Column " + this.peek().column);
+        throw new Error("Syntax Error: Expected expression at line " + this.peek().line + ", column " + (this.peek().column - 1));
     }
 }

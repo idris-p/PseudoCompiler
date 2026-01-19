@@ -30,6 +30,7 @@ export var TokenType;
     TokenType["RIGHT_CURLY"] = "RIGHT_CURLY";
     TokenType["COMMA"] = "COMMA";
     TokenType["COLON"] = "COLON";
+    TokenType["SEMI_COLON"] = "SEMI_COLON";
     // Structural
     TokenType["NEWLINE"] = "NEWLINE";
     TokenType["INDENT"] = "INDENT";

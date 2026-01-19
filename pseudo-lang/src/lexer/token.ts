@@ -32,6 +32,7 @@ export enum TokenType {
     RIGHT_CURLY = "RIGHT_CURLY",
     COMMA = "COMMA",
     COLON = "COLON",
+    SEMI_COLON = "SEMI_COLON",
 
     // Structural
     NEWLINE = "NEWLINE",

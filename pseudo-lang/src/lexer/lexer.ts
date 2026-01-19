@@ -44,7 +44,7 @@ export class Lexer {
             // Newline
             if (char === '\n') {
                 if (tokens.length > 0 && tokens[tokens.length - 1].type !== TokenType.NEWLINE) {
-                    tokens.push(this.makeToken(TokenType.NEWLINE))
+                    tokens.push(this.makeToken(TokenType.NEWLINE, "new line"))
                 }
                 this.advanceLine()
                 if (this.codeStyle === CodeStyle.INDENT && !this.isLineEmpty()) {
@@ -75,7 +75,7 @@ export class Lexer {
             tokens.push(this.operator())
         }
 
-        tokens.push(this.makeToken(TokenType.EOF))
+        tokens.push(this.makeToken(TokenType.EOF, "end of file"))
         return tokens
     }
 
@@ -126,7 +126,7 @@ export class Lexer {
 
 
     // Make token method creates a new token
-    private makeToken(type: TokenType, value?: string): Token {
+    private makeToken(type: TokenType, value: string): Token {
         return {
             type,
             value,
@@ -144,16 +144,15 @@ export class Lexer {
 
         let prevIndentLevel = this.indentStack[this.indentStack.length - 1];
         let indentLevel = Math.floor(value.length / 4) // Assuming 4 spaces per indent
-        console.log(`Indent level: ${indentLevel}, Previous indent level: ${prevIndentLevel}`);
         let result: Token[] = [];
 
         if (indentLevel > prevIndentLevel) {
             for (let i = 0; i < indentLevel - prevIndentLevel; i++) {
-                result.push(this.makeToken(TokenType.INDENT))
+                result.push(this.makeToken(TokenType.INDENT, "indent"))
             }
         } else if (indentLevel < prevIndentLevel) {
             for (let i = 0; i < prevIndentLevel - indentLevel; i++) {
-                result.push(this.makeToken(TokenType.DEDENT))
+                result.push(this.makeToken(TokenType.DEDENT, "dedent"))
             }
         }
 
@@ -161,16 +160,16 @@ export class Lexer {
 
         if (this.expectedIndent) {
             if (indentLevel <= prevIndentLevel) {
-                throw new Error(`Expected an indented block at line ${this.line}, column ${this.column}`);
+                throw new Error(`Formatting Error: Expected an indent at line ${this.line}, column ${this.column}`);
             }
             else if (indentLevel - prevIndentLevel > 1) {
-                throw new Error(`Indentation too deep at line ${this.line}, column ${this.column}`);
+                throw new Error(`Formatting Error: Indentation too deep at line ${this.line}, column ${this.column}`);
             }
             this.expectedIndent = false;
         }
         else {
             if (indentLevel > prevIndentLevel) {
-                throw new Error(`Unexpected indent at line ${this.line}, column ${this.column}`);
+                throw new Error(`Formatting Error: Unexpected indent at line ${this.line}, column ${this.column}`);
             }
         }
         return result;
@@ -204,7 +203,7 @@ export class Lexer {
         }
 
         if (this.isAtEnd()) {
-            throw new Error(`Unterminated string at line ${this.line}, column ${this.column}`)
+            throw new Error(`Syntax Error: Unterminated string at line ${this.line}, column ${this.column}`)
         }
 
         this.advance() // Skip closing quote
@@ -239,48 +238,50 @@ export class Lexer {
             case "=":
                 if (this.peek() === "=") {
                     this.advance()
-                    return this.makeToken(TokenType.DOUBLE_EQUALS)
+                    return this.makeToken(TokenType.DOUBLE_EQUALS, "==")
                 }
-                return this.makeToken(TokenType.EQUALS)
+                return this.makeToken(TokenType.EQUALS, "=")
             case "+":
-                return this.makeToken(TokenType.PLUS)
+                return this.makeToken(TokenType.PLUS, "+")
             case "-":
-                return this.makeToken(TokenType.MINUS)
+                return this.makeToken(TokenType.MINUS, "-")
             case "*":
-                return this.makeToken(TokenType.STAR)
+                return this.makeToken(TokenType.STAR, "*")
             case "/":
-                return this.makeToken(TokenType.SLASH)
+                return this.makeToken(TokenType.SLASH, "/")
             case "(":
-                return this.makeToken(TokenType.LEFT_PAREN)
+                return this.makeToken(TokenType.LEFT_PAREN, "(")
             case ")":
-                return this.makeToken(TokenType.RIGHT_PAREN)
+                return this.makeToken(TokenType.RIGHT_PAREN, ")")
             case "{":
-                return this.makeToken(TokenType.LEFT_CURLY)
+                return this.makeToken(TokenType.LEFT_CURLY, "{")
             case "}":
-                return this.makeToken(TokenType.RIGHT_CURLY)
+                return this.makeToken(TokenType.RIGHT_CURLY, "}")
             case ",":
-                return this.makeToken(TokenType.COMMA)
+                return this.makeToken(TokenType.COMMA, ",")
             case ":":
-                return this.makeToken(TokenType.COLON)
+                return this.makeToken(TokenType.COLON, ":")
+            case ";":
+                return this.makeToken(TokenType.SEMI_COLON, ";")
             case "!":
                 if (this.peek() === "=") {
                     this.advance()
-                    return this.makeToken(TokenType.NOT_EQUALS)
+                    return this.makeToken(TokenType.NOT_EQUALS, "!=")
                 }
             case "<":
                 if (this.peek() === "=") {
                     this.advance()
-                    return this.makeToken(TokenType.LESS_EQUAL)
+                    return this.makeToken(TokenType.LESS_EQUAL, "<=")
                 }
-                return this.makeToken(TokenType.LESS)
+                return this.makeToken(TokenType.LESS, "<")
             case ">":
                 if (this.peek() === "=") {
                     this.advance()
-                    return this.makeToken(TokenType.GREATER_EQUAL)
+                    return this.makeToken(TokenType.GREATER_EQUAL, ">=")
                 }
-                return this.makeToken(TokenType.GREATER)
+                return this.makeToken(TokenType.GREATER, ">")
             default:
-                throw new Error(`Unexpected character: ${char} at line ${this.line}, column ${this.column}`)
+                throw new Error(`Syntax Error: Unexpected character '${char}' at line ${this.line}, column ${this.column - 1}`)
         }
     }
 }
