@@ -182,7 +182,11 @@ export class Parser {
         // Handle optional else clause
         this.skipNewlines();
         let elseBody;
-        if (this.match(TokenType.ELSE)) {
+        if (this.match(TokenType.ELSE_IF)) {
+            elseBody = [this.parseIfStatement()];
+        }
+        else if (this.match(TokenType.ELSE)) {
+            this.skipNewlines();
             elseBody = this.parseBlock();
         }
         return {

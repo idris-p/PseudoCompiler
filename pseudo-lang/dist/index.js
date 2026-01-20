@@ -7,20 +7,18 @@ export var CodeStyle;
     CodeStyle["CURLY_BRACES"] = "CURLY_BRACES";
 })(CodeStyle || (CodeStyle = {}));
 const source = `
-x = 0;
-while x < 5 {
-    if x == 2 {
-        print "two";
-    }
-        ;
-    else {
-        print x;
-    }
-    x = x + 1;
-}
+x = 3
+if x > 8
+    print "x is greater than 8"
+elseif x > 5
+    print "x is greater than 5"
+elseif x > 2 
+    print "x is greater than 2"
+else
+    print "x is 2 or less"
 `;
-// const style = CodeStyle.INDENT
-const style = CodeStyle.CURLY_BRACES;
+const style = CodeStyle.INDENT;
+// const style = CodeStyle.CURLY_BRACES
 const lexer = new Lexer(source, style);
 const tokens = lexer.tokenize();
 // console.log("Tokens:")

@@ -3,6 +3,7 @@
 export enum TokenType {
     // Keywords
     IF = "IF",
+    ELSE_IF = "ELSE_IF",
     ELSE = "ELSE",
     WHILE = "WHILE",
     PRINT = "PRINT",
@@ -18,6 +19,7 @@ export enum TokenType {
     MINUS = "MINUS",
     STAR = "STAR",
     SLASH = "SLASH",
+    DOUBLE_SLASH = "DOUBLE_SLASH",
     DOUBLE_EQUALS = "DOUBLE_EQUALS",
     NOT_EQUALS = "NOT_EQUALS",
     LESS = "LESS",
@@ -33,6 +35,7 @@ export enum TokenType {
     COMMA = "COMMA",
     COLON = "COLON",
     SEMI_COLON = "SEMI_COLON",
+    HASH = "HASH",
 
     // Structural
     NEWLINE = "NEWLINE",

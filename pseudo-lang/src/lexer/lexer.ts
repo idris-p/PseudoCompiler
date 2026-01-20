@@ -3,6 +3,7 @@ import { CodeStyle } from "../index.js"
 
 const KEYWORDS: Record<string, TokenType> = {
     "if": TokenType.IF,
+    "elseif": TokenType.ELSE_IF,
     "else": TokenType.ELSE,
     "while": TokenType.WHILE,
     "print": TokenType.PRINT
@@ -10,6 +11,7 @@ const KEYWORDS: Record<string, TokenType> = {
 
 const BLOCK_OPENERS: Set<TokenType> = new Set([
     TokenType.IF,
+    TokenType.ELSE_IF,
     TokenType.ELSE,
     TokenType.WHILE,
 ])
@@ -60,8 +62,8 @@ export class Lexer {
             }
 
             // Strings
-            if (char === '"') {
-                tokens.push(this.string())
+            if (char === '"' || char === "'") {
+                tokens.push(this.string(char))
                 continue
             }
 
@@ -194,11 +196,11 @@ export class Lexer {
         return this.makeToken(TokenType.NUMBER, value)
     }
 
-    private string(): Token {
+    private string(quote_mark: string): Token {
         let value = ""
         this.advance() // Skip opening quote
 
-        while (!this.isAtEnd() && this.peek() !== '"') {
+        while (!this.isAtEnd() && this.peek() !== quote_mark) {
             value += this.advance()
         }
 
@@ -248,6 +250,10 @@ export class Lexer {
             case "*":
                 return this.makeToken(TokenType.STAR, "*")
             case "/":
+                if (this.peek() === "/") {
+                    this.advance()
+                    return this.makeToken(TokenType.DOUBLE_SLASH, "//")
+                }
                 return this.makeToken(TokenType.SLASH, "/")
             case "(":
                 return this.makeToken(TokenType.LEFT_PAREN, "(")
@@ -280,6 +286,13 @@ export class Lexer {
                     return this.makeToken(TokenType.GREATER_EQUAL, ">=")
                 }
                 return this.makeToken(TokenType.GREATER, ">")
+            case "#":
+                // return this.makeToken(TokenType.HASH, "#")
+                // Skip comments
+                while (!this.isAtEnd() && this.peek() !== '\n') {
+                    this.advance()
+                }
+                return this.makeToken(TokenType.NEWLINE, "new line")
             default:
                 throw new Error(`Syntax Error: Unexpected character '${char}' at line ${this.line}, column ${this.column - 1}`)
         }

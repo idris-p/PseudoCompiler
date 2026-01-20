@@ -3,6 +3,7 @@ export var TokenType;
 (function (TokenType) {
     // Keywords
     TokenType["IF"] = "IF";
+    TokenType["ELSE_IF"] = "ELSE_IF";
     TokenType["ELSE"] = "ELSE";
     TokenType["WHILE"] = "WHILE";
     TokenType["PRINT"] = "PRINT";
@@ -17,6 +18,7 @@ export var TokenType;
     TokenType["MINUS"] = "MINUS";
     TokenType["STAR"] = "STAR";
     TokenType["SLASH"] = "SLASH";
+    TokenType["DOUBLE_SLASH"] = "DOUBLE_SLASH";
     TokenType["DOUBLE_EQUALS"] = "DOUBLE_EQUALS";
     TokenType["NOT_EQUALS"] = "NOT_EQUALS";
     TokenType["LESS"] = "LESS";
@@ -31,6 +33,7 @@ export var TokenType;
     TokenType["COMMA"] = "COMMA";
     TokenType["COLON"] = "COLON";
     TokenType["SEMI_COLON"] = "SEMI_COLON";
+    TokenType["HASH"] = "HASH";
     // Structural
     TokenType["NEWLINE"] = "NEWLINE";
     TokenType["INDENT"] = "INDENT";
