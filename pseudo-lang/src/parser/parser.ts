@@ -91,6 +91,9 @@ export class Parser {
 
     private beginBlock(line: number, column: number): void {
         if (this.codeStyle === CodeStyle.INDENT) {
+            if (this.checkType(TokenType.COLON)) {
+                this.advance();
+            }
             this.consume(TokenType.NEWLINE, "Formatting Error: Expected newline before block at line " + line);
             this.consume(TokenType.INDENT, "Formatting Error: Expected an indent at line " + line);
         }
@@ -172,6 +175,10 @@ export class Parser {
         if (this.checkType(TokenType.IDENTIFIER)) {
             return this.parseAssignment();
         }
+        if (this.match(TokenType.PASS)) {
+            return this.parsePassStatement();
+        }
+
         console.log(this.peek());
         throw new Error("Syntax Error: Unexpected '" + this.peek().value + "' at line " + this.peek().line + ", column " + (this.peek().column - this.peek().value!.length));
     }
@@ -233,6 +240,13 @@ export class Parser {
             type: "While",
             condition,
             body
+        };
+    }
+
+    private parsePassStatement(): AST.PassNode {
+        this.consumeStatementTerminator();
+        return {
+            type: "Pass"
         };
     }
     

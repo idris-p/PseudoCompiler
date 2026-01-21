@@ -7,6 +7,7 @@ export enum TokenType {
     ELSE = "ELSE",
     WHILE = "WHILE",
     PRINT = "PRINT",
+    PASS = "PASS",
     // Identifiers and Literals
     IDENTIFIER = "IDENTIFIER",
     NUMBER = "NUMBER",
@@ -35,7 +36,6 @@ export enum TokenType {
     COMMA = "COMMA",
     COLON = "COLON",
     SEMI_COLON = "SEMI_COLON",
-    HASH = "HASH",
 
     // Structural
     NEWLINE = "NEWLINE",

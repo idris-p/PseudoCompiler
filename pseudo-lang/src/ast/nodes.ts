@@ -7,7 +7,8 @@ export type StatementNode =
     | VariableAssignmentNode
     | PrintNode
     | IfNode
-    | WhileNode;
+    | WhileNode
+    | PassNode;
 
 export type ExpressionNode =
     | BinaryExpressionNode
@@ -70,4 +71,8 @@ export type BooleanNode = {
 export type IdentifierNode = {
     type: "Identifier";
     name: string;
+};
+
+export type PassNode = {
+    type: "Pass";
 };

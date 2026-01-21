@@ -8,15 +8,10 @@ export enum CodeStyle {
 }
 
 const source = `
-x = 3
-if x > 8
-    print "x is greater than 8"
-elseif x > 5
-    print "x is greater than 5"
-elseif x > 2 
-    print "x is greater than 2"
-else
-    print "x is 2 or less"
+if true:
+    print("Hello, World!")
+    pass
+    # This is a comment
 `;
 
 const style = CodeStyle.INDENT

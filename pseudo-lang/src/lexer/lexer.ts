@@ -6,7 +6,8 @@ const KEYWORDS: Record<string, TokenType> = {
     "elseif": TokenType.ELSE_IF,
     "else": TokenType.ELSE,
     "while": TokenType.WHILE,
-    "print": TokenType.PRINT
+    "print": TokenType.PRINT,
+    "pass": TokenType.PASS,
 }
 
 const BLOCK_OPENERS: Set<TokenType> = new Set([
@@ -45,10 +46,16 @@ export class Lexer {
 
             // Newline
             if (char === '\n') {
+                this.advanceLine();
+
+                if (this.isCommentLine()) {
+                    this.skipLine()
+                    continue
+                }
+
                 if (tokens.length > 0 && tokens[tokens.length - 1].type !== TokenType.NEWLINE) {
                     tokens.push(this.makeToken(TokenType.NEWLINE, "new line"))
                 }
-                this.advanceLine()
                 if (this.codeStyle === CodeStyle.INDENT && !this.isLineEmpty()) {
                     tokens.push(...this.indent())
                 }
@@ -70,6 +77,15 @@ export class Lexer {
             // Identifiers and Keywords
             if (this.isAlpha(char)) {
                 tokens.push(this.identifier())
+                continue
+            }
+
+            // Comments
+            if (char === '#') {
+                // Skip comments
+                while (!this.isAtEnd() && this.peek() !== '\n') {
+                    this.advance()
+                }
                 continue
             }
 
@@ -101,6 +117,19 @@ export class Lexer {
         this.column = 1
     }
 
+    private skipLine() {
+        if (this.codeStyle === CodeStyle.INDENT) {
+            while (!this.isAtEnd() && this.peek() !== '\n') {
+                this.advance()
+            }
+        }
+        else if (this.codeStyle === CodeStyle.CURLY_BRACES) {
+            while (!this.isAtEnd() && this.peek() !== '\n' && this.peek() !== '}' && this.peek() !== ';') {
+                this.advance()
+            }
+        }
+    }
+
     // Is at end method checks if we've reached the end of the source code
     private isAtEnd(): boolean {
         return this.position >= this.sourceCode.length
@@ -124,6 +153,22 @@ export class Lexer {
             pos++;
         }
         return true;
+    }
+
+    private isCommentLine(): boolean {
+        let pos = this.position;
+        while (pos < this.sourceCode.length) {
+            const char = this.sourceCode[pos];
+            if (char === ' ') {
+                pos++;
+                continue;
+            }
+
+            if (char === '#') return true;
+            if (char === '\n') return false;
+            return false;
+        }
+        return false;
     }
 
 
@@ -286,13 +331,13 @@ export class Lexer {
                     return this.makeToken(TokenType.GREATER_EQUAL, ">=")
                 }
                 return this.makeToken(TokenType.GREATER, ">")
-            case "#":
-                // return this.makeToken(TokenType.HASH, "#")
-                // Skip comments
-                while (!this.isAtEnd() && this.peek() !== '\n') {
-                    this.advance()
-                }
-                return this.makeToken(TokenType.NEWLINE, "new line")
+            // case "#":
+            //     // return this.makeToken(TokenType.HASH, "#")
+            //     // Skip comments
+            //     while (!this.isAtEnd() && this.peek() !== '\n') {
+            //         this.advance()
+            //     }
+            //     return this.makeToken(TokenType.NEWLINE, "new line")
             default:
                 throw new Error(`Syntax Error: Unexpected character '${char}' at line ${this.line}, column ${this.column - 1}`)
         }

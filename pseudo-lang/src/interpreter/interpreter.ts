@@ -27,6 +27,9 @@ export class Interpreter {
             case "While":
                 this.executeWhile(node);
                 break;
+            case "Pass":
+                // Do nothing
+                break;
             default:
                 throw new Error(`Unknown statement type: ${(node as any).type}`);
         }

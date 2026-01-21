@@ -7,6 +7,7 @@ export var TokenType;
     TokenType["ELSE"] = "ELSE";
     TokenType["WHILE"] = "WHILE";
     TokenType["PRINT"] = "PRINT";
+    TokenType["PASS"] = "PASS";
     // Identifiers and Literals
     TokenType["IDENTIFIER"] = "IDENTIFIER";
     TokenType["NUMBER"] = "NUMBER";
@@ -33,7 +34,6 @@ export var TokenType;
     TokenType["COMMA"] = "COMMA";
     TokenType["COLON"] = "COLON";
     TokenType["SEMI_COLON"] = "SEMI_COLON";
-    TokenType["HASH"] = "HASH";
     // Structural
     TokenType["NEWLINE"] = "NEWLINE";
     TokenType["INDENT"] = "INDENT";
