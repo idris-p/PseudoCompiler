@@ -3,9 +3,18 @@ export var TokenType;
 (function (TokenType) {
     // Keywords
     TokenType["IF"] = "IF";
+    TokenType["THEN"] = "THEN";
     TokenType["ELSE_IF"] = "ELSE_IF";
     TokenType["ELSE"] = "ELSE";
+    TokenType["END_IF"] = "END_IF";
+    TokenType["SWITCH"] = "SWITCH";
+    TokenType["CASE"] = "CASE";
+    TokenType["DEFAULT"] = "DEFAULT";
+    TokenType["END_SWITCH"] = "END_SWITCH";
+    TokenType["FOR"] = "FOR";
+    TokenType["END_FOR"] = "END_FOR";
     TokenType["WHILE"] = "WHILE";
+    TokenType["END_WHILE"] = "END_WHILE";
     TokenType["PRINT"] = "PRINT";
     TokenType["PASS"] = "PASS";
     // Identifiers and Literals

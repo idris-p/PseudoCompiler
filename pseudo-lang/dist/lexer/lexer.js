@@ -2,9 +2,12 @@ import { TokenType } from "./token.js";
 import { CodeStyle } from "../index.js";
 const KEYWORDS = {
     "if": TokenType.IF,
+    "then": TokenType.THEN,
     "elseif": TokenType.ELSE_IF,
     "else": TokenType.ELSE,
+    "endif": TokenType.END_IF,
     "while": TokenType.WHILE,
+    "endwhile": TokenType.END_WHILE,
     "print": TokenType.PRINT,
     "pass": TokenType.PASS,
 };

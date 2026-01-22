@@ -1,5 +1,12 @@
 import { TokenType } from "../lexer/token.js";
 import { CodeStyle } from "../index.js";
+var BlockType;
+(function (BlockType) {
+    BlockType[BlockType["IF"] = 0] = "IF";
+    BlockType[BlockType["ELSE"] = 1] = "ELSE";
+    BlockType[BlockType["ELSE_IF"] = 2] = "ELSE_IF";
+    BlockType[BlockType["WHILE"] = 3] = "WHILE";
+})(BlockType || (BlockType = {}));
 // Parser Class - converts tokens into AST
 export class Parser {
     constructor(tokens, codeStyle) {
@@ -60,7 +67,7 @@ export class Parser {
         if (this.isAtEnd())
             return;
         if (this.codeStyle === CodeStyle.INDENT) {
-            this.consume(TokenType.NEWLINE, "Formatting Error: Expected newline after statement at line " + this.peek().line);
+            this.consume(TokenType.NEWLINE, "Formatting Error: Expected newline after statement but got '" + this.peek().value + "' at line " + this.peek().line);
             return;
         }
         else if (this.codeStyle === CodeStyle.CURLY_BRACES) {
@@ -74,14 +81,34 @@ export class Parser {
                 return;
             }
         }
-        throw new Error("Syntax Error: Expected ';' or newline after statement at line " + this.peek().line);
+        throw new Error("Syntax Error: Expected ';' or newline after statement but got '" + this.peek().value + "' at line " + this.peek().line);
     }
-    beginBlock(line, column) {
+    consumeBlockTerminator(blockType) {
+        this.skipNewlinesAndSemicolons();
+        if (blockType === BlockType.IF) {
+            if (this.match(TokenType.END_IF)) {
+                this.consumeStatementTerminator();
+                return;
+            }
+        }
+        if (blockType === BlockType.WHILE) {
+            if (this.match(TokenType.END_WHILE)) {
+                this.consumeStatementTerminator();
+                return;
+            }
+        }
+    }
+    beginBlock(blockType, line, column) {
+        if (blockType === BlockType.IF || blockType === BlockType.ELSE || blockType === BlockType.ELSE_IF) {
+            if (this.checkType(TokenType.THEN)) {
+                this.advance();
+            }
+        }
         if (this.codeStyle === CodeStyle.INDENT) {
             if (this.checkType(TokenType.COLON)) {
                 this.advance();
             }
-            this.consume(TokenType.NEWLINE, "Formatting Error: Expected newline before block at line " + line);
+            this.consume(TokenType.NEWLINE, "Formatting Error: Expected newline before block but got '" + this.peek().value + "' at line " + line);
             this.consume(TokenType.INDENT, "Formatting Error: Expected an indent at line " + line);
         }
         else {
@@ -99,8 +126,8 @@ export class Parser {
             this.consume(TokenType.RIGHT_CURLY, "Syntax Error: Expected '}' to end block at line " + this.peek().line + ", column " + this.peek().column);
         }
     }
-    parseBlock() {
-        this.beginBlock(this.peek().line, this.peek().column);
+    parseBlock(blockType) {
+        this.beginBlock(blockType, this.peek().line, this.peek().column);
         const statements = [];
         while (!this.isAtBlockEnd() && !this.isAtEnd()) {
             this.skipNewlinesAndSemicolons();
@@ -184,7 +211,7 @@ export class Parser {
     }
     parseIfStatement() {
         const condition = this.parseExpression();
-        const thenBody = this.parseBlock();
+        const thenBody = this.parseBlock(BlockType.IF);
         // Handle optional else clause
         this.skipNewlines();
         let elseBody;
@@ -193,8 +220,9 @@ export class Parser {
         }
         else if (this.match(TokenType.ELSE)) {
             this.skipNewlines();
-            elseBody = this.parseBlock();
+            elseBody = this.parseBlock(BlockType.ELSE);
         }
+        this.consumeBlockTerminator(BlockType.IF);
         return {
             type: "If",
             condition,
@@ -204,7 +232,8 @@ export class Parser {
     }
     parseWhileStatement() {
         const condition = this.parseExpression();
-        const body = this.parseBlock();
+        const body = this.parseBlock(BlockType.WHILE);
+        this.consumeBlockTerminator(BlockType.WHILE);
         return {
             type: "While",
             condition,

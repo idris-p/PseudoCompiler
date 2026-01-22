@@ -2,6 +2,13 @@ import { Token, TokenType } from "../lexer/token.js"
 import { CodeStyle } from "../index.js"
 import * as AST from "../ast/nodes.js"
 
+enum BlockType {
+    IF,
+    ELSE,
+    ELSE_IF,
+    WHILE
+}
+
 // Parser Class - converts tokens into AST
 export class Parser {
     private tokens: Token[];
@@ -71,7 +78,7 @@ export class Parser {
     private consumeStatementTerminator(): void {
         if (this.isAtEnd()) return;
         if (this.codeStyle === CodeStyle.INDENT) {
-            this.consume(TokenType.NEWLINE, "Formatting Error: Expected newline after statement at line " + this.peek().line);
+            this.consume(TokenType.NEWLINE, "Formatting Error: Expected newline after statement but got '" + this.peek().value + "' at line " + this.peek().line);
             return;
         }
         else if (this.codeStyle === CodeStyle.CURLY_BRACES) {
@@ -86,15 +93,38 @@ export class Parser {
             }
         }
 
-        throw new Error("Syntax Error: Expected ';' or newline after statement at line " + this.peek().line);
+        throw new Error("Syntax Error: Expected ';' or newline after statement but got '" + this.peek().value + "' at line " + this.peek().line);
     }
 
-    private beginBlock(line: number, column: number): void {
+    private consumeBlockTerminator(blockType: BlockType): void {
+        this.skipNewlinesAndSemicolons();
+
+        if (blockType === BlockType.IF) {
+            if (this.match(TokenType.END_IF)) {
+                this.consumeStatementTerminator();
+                return;
+            }
+        }
+
+        if (blockType === BlockType.WHILE) {
+            if (this.match(TokenType.END_WHILE)) {
+                this.consumeStatementTerminator();
+                return;
+            }
+        }
+    }
+
+    private beginBlock(blockType: BlockType, line: number, column: number): void {
+        if (blockType === BlockType.IF || blockType === BlockType.ELSE || blockType === BlockType.ELSE_IF) {
+            if (this.checkType(TokenType.THEN)) {
+                this.advance();
+            }
+        }
         if (this.codeStyle === CodeStyle.INDENT) {
             if (this.checkType(TokenType.COLON)) {
                 this.advance();
             }
-            this.consume(TokenType.NEWLINE, "Formatting Error: Expected newline before block at line " + line);
+            this.consume(TokenType.NEWLINE, "Formatting Error: Expected newline before block but got '" + this.peek().value + "' at line " + line);
             this.consume(TokenType.INDENT, "Formatting Error: Expected an indent at line " + line);
         }
         else {
@@ -113,8 +143,8 @@ export class Parser {
         }
     }
 
-    private parseBlock(): AST.StatementNode[] {
-        this.beginBlock(this.peek().line, this.peek().column);
+    private parseBlock(blockType: BlockType): AST.StatementNode[] {
+        this.beginBlock(blockType, this.peek().line, this.peek().column);
 
         const statements: AST.StatementNode[] = [];
         while (!this.isAtBlockEnd() && !this.isAtEnd()) {
@@ -209,7 +239,7 @@ export class Parser {
 
     private parseIfStatement(): AST.IfNode {
         const condition = this.parseExpression();
-        const thenBody = this.parseBlock();
+        const thenBody = this.parseBlock(BlockType.IF);
 
         // Handle optional else clause
         this.skipNewlines();
@@ -221,8 +251,10 @@ export class Parser {
         }
         else if (this.match(TokenType.ELSE)) {
             this.skipNewlines();
-            elseBody = this.parseBlock();
+            elseBody = this.parseBlock(BlockType.ELSE);
         }
+
+        this.consumeBlockTerminator(BlockType.IF);
 
         return {
             type: "If",
@@ -234,7 +266,9 @@ export class Parser {
 
     private parseWhileStatement(): AST.WhileNode {
         const condition = this.parseExpression();
-        const body = this.parseBlock();
+        const body = this.parseBlock(BlockType.WHILE);
+
+        this.consumeBlockTerminator(BlockType.WHILE);
 
         return {
             type: "While",

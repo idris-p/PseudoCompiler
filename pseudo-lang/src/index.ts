@@ -8,14 +8,27 @@ export enum CodeStyle {
 }
 
 const source = `
-if true:
-    print("Hello, World!")
-    pass
-    # This is a comment
+x = 1
+if x > 3 then {
+    print "x is greater than 3"
+}
+elseif x == 3 then {
+    print "x is equal to 3"
+}
+else {
+    print "x is not greater than 3"
+}
+endif
+
+while x < 5 {
+    print x
+    x = x + 1
+}
+endwhile
 `;
 
-const style = CodeStyle.INDENT
-// const style = CodeStyle.CURLY_BRACES
+// const style = CodeStyle.INDENT
+const style = CodeStyle.CURLY_BRACES
 
 const lexer = new Lexer(source, style)
 const tokens = lexer.tokenize()

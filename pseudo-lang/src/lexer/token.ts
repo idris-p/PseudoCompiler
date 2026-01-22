@@ -3,9 +3,22 @@
 export enum TokenType {
     // Keywords
     IF = "IF",
+    THEN = "THEN",
     ELSE_IF = "ELSE_IF",
     ELSE = "ELSE",
+    END_IF = "END_IF",
+
+    SWITCH = "SWITCH",
+    CASE = "CASE",
+    DEFAULT = "DEFAULT",
+    END_SWITCH = "END_SWITCH",
+
+    FOR = "FOR",
+    END_FOR = "END_FOR",
+
     WHILE = "WHILE",
+    END_WHILE = "END_WHILE",
+    
     PRINT = "PRINT",
     PASS = "PASS",
     // Identifiers and Literals
