@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
-import Editor from "@monaco-editor/react";
 import Split from "react-split";
+import CodeEditor from "./CodeEditor";
+import Terminal from "./Terminal";
 
 export default function Container() {
     const getInitialTheme = () => 
@@ -19,25 +20,10 @@ export default function Container() {
     }, []);
 
     return (
-        <div className="border-4 rounded-xl h-full w-full overflow-hidden">
-            <Split className="flex h-full" sizes={[50, 50]} minSize={200} gutterSize={8}>
-                <div className="h-full">
-                    <Editor
-                        height="100%"
-                        defaultValue="// some comment"
-                        theme={theme}
-                        options={{
-                            fontSize: 18,
-                            fontFamily: 'Cascadia Code, monospace',
-                            padding: { top: 20, bottom: 20 },
-                            }}
-                    />
-                </div>
-                <div className="h-full bg-black text-green-400 font-mono text-sm p-2 overflow-auto">
-                    <pre>
-                        {`Pseudo Compiler v0.1.0`}
-                    </pre>
-                </div>
+        <div className="border-4 rounded-xl border-gray-400 h-full w-full overflow-hidden">
+            <Split className="flex h-full" sizes={[60, 40]} minSize={200} gutterSize={8}>
+                <CodeEditor theme={theme} />
+                <Terminal />
             </Split>
         </div>
     )

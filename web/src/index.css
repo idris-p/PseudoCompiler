@@ -50,11 +50,11 @@ button:focus-visible {
 } */
 
 .gutter {
-  background-color: #e5e7eb; /* gray-200 */
+  background-color: #6b7280; /* gray-500 */
 }
 
 .gutter:hover {
-  background-color: #c5d8f9; /* gray-400 */
+  background-color: #9ca3af; /* gray-400 */
 }
 
 .gutter.gutter-horizontal {
@@ -62,17 +62,9 @@ button:focus-visible {
 }
 
 @media (prefers-color-scheme: light) {
-  .gutter {
-    background-color: #374151;
+  html, body {
+    background-color: rgba(0, 0, 0, 0.08);
   }
-
-  .gutter:hover {
-    background-color: #4b5563;
-  }
-}
-
-
-@media (prefers-color-scheme: light) {
   :root {
     color: #213547;
     background-color: #ffffff;

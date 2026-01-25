@@ -2,8 +2,8 @@ import { IoMdSettings } from "react-icons/io";
 
 export default function ConfigButton() {
     return (
-        <div className="border-4 border-l-0 rounded-r-xl h-10 w-10 mt-3 flex justify-center items-center">
-            <button className=" text-black hover:text-gray-700 dark:text-white dark:hover:text-gray-300">
+        <div className="border-4 border-l-0 rounded-r-xl border-gray-500 hover:border-gray-400 h-10 w-10 mt-1 pr-0.5 flex justify-center items-center text-gray-500 hover:text-gray-400 bg-white dark:bg-neutral-800 cursor-pointer">
+            <button className="cursor-pointer">
                 <IoMdSettings size={26} />
             </button>
         </div>
