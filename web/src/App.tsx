@@ -1,16 +1,14 @@
+import { useState } from 'react'
 import Container from './components/Container'
-import ConfigButton from './components/ConfigButton'
-import PlayButton from './components/PlayButton'
+import SideButtons from './components/SideButtons'
 
 function App() {
+  const [showConfig, setShowConfig] = useState(false)
 
   return (
     <div className='h-screen p-10 flex'>
-      <Container />
-      <div>
-        <PlayButton />
-        <ConfigButton />
-      </div>
+      <Container showConfig={showConfig} />
+      <SideButtons showConfig={showConfig} setShowConfig={setShowConfig} />
     </div>
   )
 }

@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import Split from "react-split";
 import CodeEditor from "./CodeEditor";
 import Terminal from "./Terminal";
+import ConfigMenu from "./ConfigMenu";
 
-export default function Container() {
+export default function Container({ showConfig }: { showConfig: boolean }) {
     const getInitialTheme = () => 
         window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? "vs-dark" : "vs-light";
     
@@ -21,10 +22,11 @@ export default function Container() {
 
     return (
         <div className="border-4 rounded-xl border-gray-400 h-full w-full overflow-hidden">
-            <Split className="flex h-full" sizes={[60, 40]} minSize={200} gutterSize={8}>
+            { !showConfig && <Split className="flex h-full" sizes={[60, 40]} minSize={200} gutterSize={8}>
                 <CodeEditor theme={theme} />
                 <Terminal />
-            </Split>
+            </Split>}
+            { showConfig && <ConfigMenu /> }
         </div>
     )
 }
