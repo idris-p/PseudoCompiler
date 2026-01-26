@@ -1,11 +1,12 @@
 import Editor from "@monaco-editor/react";
 
-export default function CodeEditor({ theme }: { theme: string }) {
+export default function CodeEditor({ theme, code, setCode }: { theme: string, code: string, setCode: React.Dispatch<React.SetStateAction<string>> }) {
     return (
         <div className="h-full">
             <Editor
                 height="100%"
-                defaultValue={`x = 0\nwhile x < 5\n\tif x == 2\n\t\tprint "two"\n\telse\n\t\tprint x\n\tx = x + 1`}
+                value={code}
+                onChange={(value) => setCode(value || "")}
                 theme={theme}
                 options={{
                     fontSize: 16,

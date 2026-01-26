@@ -1,13 +1,22 @@
 import * as AST from "../ast/nodes.js";
 
+export type ExecutionResult = {
+    output: any[];
+    environment: Map<string, any>;
+}
+
 // Interpreter Class - executes the AST
 export class Interpreter {
     private environment: Map<string, any> = new Map();
+    private output: any[] = [];
 
-    run(program: AST.ProgramNode) {
+    run(program: AST.ProgramNode): ExecutionResult {
+        this.environment.clear();
+        this.output = [];
         for (const statement of program.body) {
             this.executeStatement(statement);
         }
+        return { output: this.output, environment: this.environment };
     }
 
     private executeStatement(node: AST.StatementNode): void {
@@ -43,6 +52,7 @@ export class Interpreter {
     private executePrint(node: AST.PrintNode) {
         const value = this.evaluateExpression(node.expression);
         console.log(value);
+        this.output.push(value);
     }
 
     private executeIf(node: AST.IfNode) {

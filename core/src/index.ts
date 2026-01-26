@@ -7,40 +7,23 @@ export enum CodeStyle {
     CURLY_BRACES = "CURLY_BRACES"
 }
 
-const source = `
-x = 1
-if x > 3 then {
-    print "x is greater than 3"
+export function runPseudoCode(source: string, codeStyle: CodeStyle) {
+    source = source.replace(/\t/g, "    "); // Replace tabs with 4 spaces for consistency
+
+    const lexer = new Lexer(source, codeStyle)
+    const tokens = lexer.tokenize()
+
+    // console.log("Tokens:")
+    // console.log(tokens)
+
+    const parser = new Parser(tokens, codeStyle)
+    const ast = parser.parse()
+
+    // console.log("AST:")
+    // console.log(JSON.stringify(ast, null, 2))
+
+    const interpreter = new Interpreter()
+    const output = interpreter.run(ast)
+
+    return output;
 }
-elseif x == 3 then {
-    print "x is equal to 3"
-}
-else {
-    print "x is not greater than 3"
-}
-endif
-
-while x < 5 {
-    print x
-    x = x + 1
-}
-endwhile
-`;
-
-// const style = CodeStyle.INDENT
-const style = CodeStyle.CURLY_BRACES
-
-const lexer = new Lexer(source, style)
-const tokens = lexer.tokenize()
-
-// console.log("Tokens:")
-// console.log(tokens)
-
-const parser = new Parser(tokens, style)
-const ast = parser.parse()
-
-// console.log("AST:")
-// console.log(JSON.stringify(ast, null, 2))
-
-const interpreter = new Interpreter()
-interpreter.run(ast)
