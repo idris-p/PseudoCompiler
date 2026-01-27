@@ -4,7 +4,7 @@ import CodeEditor from "./CodeEditor";
 import Terminal from "./Terminal";
 import ConfigMenu from "./ConfigMenu";
 
-export default function Container({ showConfig, code, setCode }: { showConfig: boolean, code: string, setCode: React.Dispatch<React.SetStateAction<string>> }) {
+export default function Container({ showConfig, code, setCode, terminalOutput }: { showConfig: boolean, code: string, setCode: React.Dispatch<React.SetStateAction<string>>, terminalOutput: string[] }) {
     const getInitialTheme = () => 
         window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? "vs-dark" : "vs-light";
     
@@ -25,7 +25,7 @@ export default function Container({ showConfig, code, setCode }: { showConfig: b
             { !showConfig && 
             <Split className="flex h-full" sizes={[60, 40]} minSize={200} gutterSize={8}>
                 <CodeEditor theme={theme} code={code} setCode={setCode} />
-                <Terminal />
+                <Terminal terminalOutput={terminalOutput} />
             </Split>}
             { showConfig && <ConfigMenu /> }
         </div>

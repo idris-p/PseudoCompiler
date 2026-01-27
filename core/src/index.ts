@@ -10,6 +10,9 @@ export enum CodeStyle {
 export function runPseudoCode(source: string, codeStyle: CodeStyle) {
     source = source.replace(/\t/g, "    "); // Replace tabs with 4 spaces for consistency
 
+    console.log("Source Code:")
+    console.log(source)
+
     const lexer = new Lexer(source, codeStyle)
     const tokens = lexer.tokenize()
 
