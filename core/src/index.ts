@@ -1,25 +1,23 @@
 import { Lexer } from "./lexer/lexer.js"
 import { Parser } from "./parser/parser.js"
 import { Interpreter } from "./interpreter/interpreter.js"
+import { config } from "./loader.js"
 
-export enum CodeStyle {
-    INDENT = "INDENT",
-    CURLY_BRACES = "CURLY_BRACES"
-}
-
-export function runPseudoCode(source: string, codeStyle: CodeStyle) {
+export function runPseudoCode(source: string) {
     source = source.replace(/\t/g, "    "); // Replace tabs with 4 spaces for consistency
 
-    console.log("Source Code:")
-    console.log(source)
+    // console.log("Source Code:")
+    // console.log(source)
 
-    const lexer = new Lexer(source, codeStyle)
+    // console.log("Using Switch Fallthrough:", config.switchFallthrough);
+
+    const lexer = new Lexer(source, config.codeStyle)
     const tokens = lexer.tokenize()
 
     // console.log("Tokens:")
     // console.log(tokens)
 
-    const parser = new Parser(tokens, codeStyle)
+    const parser = new Parser(tokens, config.codeStyle)
     const ast = parser.parse()
 
     // console.log("AST:")
@@ -30,3 +28,12 @@ export function runPseudoCode(source: string, codeStyle: CodeStyle) {
 
     return output;
 }
+
+runPseudoCode(`
+count = 0
+
+while true
+	print count
+	count = count + 1
+	break
+`);

@@ -7,8 +7,10 @@ export type StatementNode =
     | VariableAssignmentNode
     | PrintNode
     | IfNode
+    | SwitchNode
     | WhileNode
-    | PassNode;
+    | PassNode
+    | BreakNode;
 
 export type ExpressionNode =
     | BinaryExpressionNode
@@ -38,6 +40,18 @@ export type IfNode = {
     condition: ExpressionNode;
     thenBody: StatementNode[];
     elseBody?: StatementNode[];
+};
+
+export type SwitchNode = {
+    type: "Switch";
+    expression: ExpressionNode;
+    cases: SwitchCaseNode[];
+    defaultBody?: StatementNode[];
+};
+
+export type SwitchCaseNode = {
+    caseExpression: ExpressionNode;
+    body: StatementNode[];
 };
 
 export type WhileNode = {
@@ -75,4 +89,8 @@ export type IdentifierNode = {
 
 export type PassNode = {
     type: "Pass";
+};
+
+export type BreakNode = {
+    type: "Break";
 };

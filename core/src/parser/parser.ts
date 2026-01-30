@@ -1,11 +1,14 @@
 import { Token, TokenType } from "../lexer/token.js"
-import { CodeStyle } from "../index.js"
+import { CodeStyle } from "../CodeStyle.js"
 import * as AST from "../ast/nodes.js"
 
 enum BlockType {
     IF,
     ELSE,
     ELSE_IF,
+    SWITCH,
+    CASE,
+    DEFAULT,
     WHILE
 }
 
@@ -106,6 +109,13 @@ export class Parser {
             }
         }
 
+        if (blockType === BlockType.SWITCH) {
+            if (this.match(TokenType.END_SWITCH)) {
+                this.consumeStatementTerminator();
+                return;
+            }
+        }
+
         if (blockType === BlockType.WHILE) {
             if (this.match(TokenType.END_WHILE)) {
                 this.consumeStatementTerminator();
@@ -199,6 +209,9 @@ export class Parser {
         if (this.match(TokenType.IF)) {
             return this.parseIfStatement();
         }
+        if (this.match(TokenType.SWITCH)) {
+            return this.parseSwitchStatement();
+        }
         if (this.match(TokenType.WHILE)) {
             return this.parseWhileStatement();
         }
@@ -208,8 +221,10 @@ export class Parser {
         if (this.match(TokenType.PASS)) {
             return this.parsePassStatement();
         }
+        if (this.match(TokenType.BREAK)) {
+            return this.parseBreakStatement();
+        }
 
-        console.log(this.peek());
         throw new Error("Syntax Error: Unexpected '" + this.peek().value + "' at line " + this.peek().line + ", column " + (this.peek().column - this.peek().value!.length));
     }
 
@@ -264,6 +279,52 @@ export class Parser {
         };
     }
 
+    private parseSwitchStatement(): AST.SwitchNode {
+        const expression = this.parseExpression();
+
+        this.beginBlock(BlockType.SWITCH, this.peek().line, this.peek().column);
+
+        const cases: AST.SwitchCaseNode[] = [];
+        let defaultCase: AST.StatementNode[] | undefined;
+
+        while (!this.isAtBlockEnd() && !this.isAtEnd()) {
+            this.skipNewlinesAndSemicolons();
+
+            if (this.match(TokenType.CASE)) {
+                const value = this.parseExpression();
+                if (this.checkType(TokenType.COLON)) {
+                    this.advance();
+                }
+
+                const body = this.parseBlock(BlockType.CASE);
+                cases.push({
+                    caseExpression: value,
+                    body
+                });
+            }
+            else if (this.match(TokenType.DEFAULT)) {
+                if (this.checkType(TokenType.COLON)) {
+                    this.advance();
+                }
+                defaultCase = this.parseBlock(BlockType.DEFAULT);
+                break;
+            }
+            else {
+                break;
+            }
+        }
+        this.skipNewlinesAndSemicolons();
+        this.endBlock();
+        this.consumeBlockTerminator(BlockType.SWITCH);
+
+        return {
+            type: "Switch",
+            expression,
+            cases,
+            defaultBody: defaultCase
+        };
+    }
+
     private parseWhileStatement(): AST.WhileNode {
         const condition = this.parseExpression();
         const body = this.parseBlock(BlockType.WHILE);
@@ -281,6 +342,13 @@ export class Parser {
         this.consumeStatementTerminator();
         return {
             type: "Pass"
+        };
+    }
+
+    private parseBreakStatement(): AST.BreakNode {
+        this.consumeStatementTerminator();
+        return {
+            type: "Break"
         };
     }
     

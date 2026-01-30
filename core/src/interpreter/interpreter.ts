@@ -1,9 +1,12 @@
+import { config } from "../loader.js";
 import * as AST from "../ast/nodes.js";
 
 export type ExecutionResult = {
     output: any[];
     environment: Map<string, any>;
 }
+
+class BreakSignal {}
 
 // Interpreter Class - executes the AST
 export class Interpreter {
@@ -33,12 +36,17 @@ export class Interpreter {
             case "If":
                 this.executeIf(node);
                 break;
+            case "Switch":
+                this.executeSwitch(node);
+                break;
             case "While":
                 this.executeWhile(node);
                 break;
             case "Pass":
                 // Do nothing
                 break;
+            case "Break":
+                throw new BreakSignal();
             default:
                 throw new Error(`Unknown statement type: ${(node as any).type}`);
         }
@@ -65,9 +73,46 @@ export class Interpreter {
         }
     }
 
+    private executeSwitch(node: AST.SwitchNode) {
+        const switchValue = this.evaluateExpression(node.expression);
+        let caseMatched = false;
+
+        try {
+            for (const caseNode of node.cases) {
+                const caseValue = this.evaluateExpression(caseNode.caseExpression);
+
+                if (switchValue === caseValue || caseMatched) {
+                    caseMatched = true;
+                    caseNode.body.forEach(stmt => this.executeStatement(stmt));
+                    if (!config.switchFallthrough)
+                    return;
+                }
+            }
+
+            if (node.defaultBody && (!caseMatched || config.switchFallthrough)) {
+                node.defaultBody.forEach(stmt => this.executeStatement(stmt));
+            }
+        } catch (e) {
+            if (e instanceof BreakSignal) {
+                // Exit switch on break
+                return;
+            } else {
+                throw e;
+            }
+        }
+    }
+
     private executeWhile(node: AST.WhileNode) {
         while (this.evaluateExpression(node.condition)) {
-            node.body.forEach(stmt => this.executeStatement(stmt));
+            try {
+                node.body.forEach(stmt => this.executeStatement(stmt));
+            } catch (e) {
+                if (e instanceof BreakSignal) {
+                    break;
+                } else {
+                    throw e;
+                }
+            }
         }
     }
 
@@ -103,6 +148,9 @@ export class Interpreter {
             case "STAR":
                 return left * right;
             case "SLASH":
+                if (right === 0) {
+                    throw new Error("Math Error: Division by zero");
+                }
                 return left / right;
 
             case "DOUBLE_EQUALS":

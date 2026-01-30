@@ -11,6 +11,7 @@ export var TokenType;
     TokenType["CASE"] = "CASE";
     TokenType["DEFAULT"] = "DEFAULT";
     TokenType["END_SWITCH"] = "END_SWITCH";
+    TokenType["BREAK"] = "BREAK";
     TokenType["FOR"] = "FOR";
     TokenType["END_FOR"] = "END_FOR";
     TokenType["WHILE"] = "WHILE";

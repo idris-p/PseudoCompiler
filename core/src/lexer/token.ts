@@ -12,6 +12,7 @@ export enum TokenType {
     CASE = "CASE",
     DEFAULT = "DEFAULT",
     END_SWITCH = "END_SWITCH",
+    BREAK = "BREAK",
 
     FOR = "FOR",
     END_FOR = "END_FOR",

@@ -1,11 +1,11 @@
 import { FaPlay } from "react-icons/fa";
-import { CodeStyle, runPseudoCode } from "../../../core/src/index.js";
+import { runPseudoCode } from "../../../core/src/index.js";
 
 export default function PlayButton( { code, setTerminalOutput }: { code: string, setTerminalOutput: (output: string[]) => void } ) {
 
     const handleRun = () => {
         try {
-            const result = runPseudoCode(code, CodeStyle.INDENT);
+            const result = runPseudoCode(code);
             setTerminalOutput(result.output);
         } catch (error) {
             console.error("Error running pseudo code:", error);

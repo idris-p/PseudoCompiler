@@ -1,11 +1,14 @@
 import { TokenType } from "../lexer/token.js";
-import { CodeStyle } from "../index.js";
+import { CodeStyle } from "../CodeStyle.js";
 var BlockType;
 (function (BlockType) {
     BlockType[BlockType["IF"] = 0] = "IF";
     BlockType[BlockType["ELSE"] = 1] = "ELSE";
     BlockType[BlockType["ELSE_IF"] = 2] = "ELSE_IF";
-    BlockType[BlockType["WHILE"] = 3] = "WHILE";
+    BlockType[BlockType["SWITCH"] = 3] = "SWITCH";
+    BlockType[BlockType["CASE"] = 4] = "CASE";
+    BlockType[BlockType["DEFAULT"] = 5] = "DEFAULT";
+    BlockType[BlockType["WHILE"] = 6] = "WHILE";
 })(BlockType || (BlockType = {}));
 // Parser Class - converts tokens into AST
 export class Parser {
@@ -87,6 +90,12 @@ export class Parser {
         this.skipNewlinesAndSemicolons();
         if (blockType === BlockType.IF) {
             if (this.match(TokenType.END_IF)) {
+                this.consumeStatementTerminator();
+                return;
+            }
+        }
+        if (blockType === BlockType.SWITCH) {
+            if (this.match(TokenType.END_SWITCH)) {
                 this.consumeStatementTerminator();
                 return;
             }
@@ -178,6 +187,9 @@ export class Parser {
         if (this.match(TokenType.IF)) {
             return this.parseIfStatement();
         }
+        if (this.match(TokenType.SWITCH)) {
+            return this.parseSwitchStatement();
+        }
         if (this.match(TokenType.WHILE)) {
             return this.parseWhileStatement();
         }
@@ -187,7 +199,6 @@ export class Parser {
         if (this.match(TokenType.PASS)) {
             return this.parsePassStatement();
         }
-        console.log(this.peek());
         throw new Error("Syntax Error: Unexpected '" + this.peek().value + "' at line " + this.peek().line + ", column " + (this.peek().column - this.peek().value.length));
     }
     parseAssignment() {
@@ -228,6 +239,44 @@ export class Parser {
             condition,
             thenBody,
             elseBody
+        };
+    }
+    parseSwitchStatement() {
+        const expression = this.parseExpression();
+        this.beginBlock(BlockType.SWITCH, this.peek().line, this.peek().column);
+        const cases = [];
+        let defaultCase;
+        while (!this.isAtBlockEnd() && !this.isAtEnd()) {
+            this.skipNewlinesAndSemicolons();
+            if (this.match(TokenType.CASE)) {
+                const value = this.parseExpression();
+                if (this.checkType(TokenType.COLON)) {
+                    this.advance();
+                }
+                const body = this.parseBlock(BlockType.CASE);
+                cases.push({
+                    caseExpression: value,
+                    body
+                });
+            }
+            else if (this.match(TokenType.DEFAULT)) {
+                if (this.checkType(TokenType.COLON)) {
+                    this.advance();
+                }
+                defaultCase = this.parseBlock(BlockType.DEFAULT);
+                break;
+            }
+            else {
+                break;
+            }
+        }
+        this.endBlock();
+        this.consumeBlockTerminator(BlockType.SWITCH);
+        return {
+            type: "Switch",
+            expression,
+            cases,
+            defaultBody: defaultCase
         };
     }
     parseWhileStatement() {

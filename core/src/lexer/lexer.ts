@@ -1,5 +1,5 @@
 import { TokenType, type Token } from "./token.js"
-import { CodeStyle } from "../index.js"
+import { CodeStyle } from "../CodeStyle.js"
 
 const KEYWORDS: Record<string, TokenType> = {
     "if": TokenType.IF,
@@ -7,6 +7,11 @@ const KEYWORDS: Record<string, TokenType> = {
     "elseif": TokenType.ELSE_IF,
     "else": TokenType.ELSE,
     "endif": TokenType.END_IF,
+    "switch": TokenType.SWITCH,
+    "case": TokenType.CASE,
+    "default": TokenType.DEFAULT,
+    "endswitch": TokenType.END_SWITCH,
+    "break": TokenType.BREAK,
     "while": TokenType.WHILE,
     "endwhile": TokenType.END_WHILE,
     "print": TokenType.PRINT,
@@ -17,6 +22,9 @@ const BLOCK_OPENERS: Set<TokenType> = new Set([
     TokenType.IF,
     TokenType.ELSE_IF,
     TokenType.ELSE,
+    TokenType.SWITCH,
+    TokenType.CASE,
+    TokenType.DEFAULT,
     TokenType.WHILE,
 ])
 

@@ -1,39 +1,29 @@
 import { Lexer } from "./lexer/lexer.js";
 import { Parser } from "./parser/parser.js";
 import { Interpreter } from "./interpreter/interpreter.js";
-export var CodeStyle;
-(function (CodeStyle) {
-    CodeStyle["INDENT"] = "INDENT";
-    CodeStyle["CURLY_BRACES"] = "CURLY_BRACES";
-})(CodeStyle || (CodeStyle = {}));
-const source = `
-x = 1
-if x > 3 then {
-    print "x is greater than 3"
+import { config } from "./loader.js";
+export function runPseudoCode(source) {
+    source = source.replace(/\t/g, "    "); // Replace tabs with 4 spaces for consistency
+    // console.log("Source Code:")
+    // console.log(source)
+    // console.log("Using Switch Fallthrough:", config.switchFallthrough);
+    const lexer = new Lexer(source, config.codeStyle);
+    const tokens = lexer.tokenize();
+    console.log("Tokens:");
+    console.log(tokens);
+    const parser = new Parser(tokens, config.codeStyle);
+    const ast = parser.parse();
+    console.log("AST:");
+    console.log(JSON.stringify(ast, null, 2));
+    const interpreter = new Interpreter();
+    const output = interpreter.run(ast);
+    return output;
 }
-elseif x == 3 then {
-    print "x is equal to 3"
-}
-else {
-    print "x is not greater than 3"
-}
-endif
+runPseudoCode(`
+count = 0
 
-while x < 5 {
-    print x
-    x = x + 1
-}
-endwhile
-`;
-// const style = CodeStyle.INDENT
-const style = CodeStyle.CURLY_BRACES;
-const lexer = new Lexer(source, style);
-const tokens = lexer.tokenize();
-// console.log("Tokens:")
-// console.log(tokens)
-const parser = new Parser(tokens, style);
-const ast = parser.parse();
-// console.log("AST:")
-// console.log(JSON.stringify(ast, null, 2))
-const interpreter = new Interpreter();
-interpreter.run(ast);
+while true
+	print count
+	count = count + 1
+	break
+`);
