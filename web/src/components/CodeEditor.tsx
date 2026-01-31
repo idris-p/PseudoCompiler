@@ -2,13 +2,20 @@ import Editor from "@monaco-editor/react";
 import { registerPseudoLanguage } from "../pseudoLang";
 
 export default function CodeEditor({ theme, code, setCode }: { theme: string, code: string, setCode: React.Dispatch<React.SetStateAction<string>> }) {
+    
+    const handleChange = (value: string | undefined) => {
+        const newValue = value || "";
+        setCode(newValue);
+        localStorage.setItem("pseudoCode", newValue);
+    }
+    
     return (
         <div className="h-full">
             <Editor
                 language="pseudo"
                 height="100%"
                 value={code}
-                onChange={(value) => setCode(value || "")}
+                onChange={handleChange}
                 onMount={(_, monaco) => {
                     registerPseudoLanguage(monaco);
                 }}

@@ -4,7 +4,7 @@ import SideButtons from './components/SideButtons'
 
 function App() {
   const [showConfig, setShowConfig] = useState(false)
-  const [code, setCode] = useState<string>(`x = 0\nwhile x < 5\n\tif x == 2\n\t\tprint "two"\n\telse\n\t\tprint x\n\tx = x + 1`);
+  const [code, setCode] = useState<string>(localStorage.getItem("pseudoCode") || "# Write some pseudocode here\n\n");
   const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
 
   return (

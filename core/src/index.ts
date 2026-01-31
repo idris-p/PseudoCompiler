@@ -30,10 +30,5 @@ export function runPseudoCode(source: string) {
 }
 
 runPseudoCode(`
-count = 0
 
-while true
-	print count
-	count = count + 1
-	break
 `);

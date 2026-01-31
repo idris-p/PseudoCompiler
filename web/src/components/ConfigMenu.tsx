@@ -7,12 +7,18 @@ export default function ConfigMenu() {
 
     const handleCodeStyleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         config.codeStyle = e.target.value === "indent" ? CodeStyle.INDENT : CodeStyle.CURLY_BRACES;
+        persistConfig();
     };
 
     const handleSwitchFallthroughChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         config.switchFallthrough = e.target.checked;
         setSwitchFallthrough(e.target.checked);
+        persistConfig();
     };
+
+    function persistConfig() {
+        localStorage.setItem("pseudoCodeConfig", JSON.stringify(config));
+    }
 
     return (
         <div className="h-full bg-gray-50 dark:bg-neutral-800 text-gray-700 dark:text-gray-300 p-8 overflow-y-scroll text-left">
