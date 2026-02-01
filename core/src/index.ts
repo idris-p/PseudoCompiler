@@ -9,13 +9,13 @@ export function runPseudoCode(source: string) {
     // console.log("Source Code:")
     // console.log(source)
 
-    // console.log("Using Switch Fallthrough:", config.switchFallthrough);
+    // console.log("Using Print Syntax:", config.printSyntax);
 
     const lexer = new Lexer(source, config.codeStyle)
     const tokens = lexer.tokenize()
 
-    // console.log("Tokens:")
-    // console.log(tokens)
+    console.log("Tokens:")
+    console.log(tokens)
 
     const parser = new Parser(tokens, config.codeStyle)
     const ast = parser.parse()
@@ -30,5 +30,5 @@ export function runPseudoCode(source: string) {
 }
 
 runPseudoCode(`
-
+# Console.WriteLine("Hello World")
 `);

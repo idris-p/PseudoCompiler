@@ -1,22 +1,28 @@
 import { TokenType, type Token } from "./token.js"
 import { CodeStyle } from "../CodeStyle.js"
+import { config } from "../loader.js";
 
-const KEYWORDS: Record<string, TokenType> = {
-    "if": TokenType.IF,
-    "then": TokenType.THEN,
-    "elseif": TokenType.ELSE_IF,
-    "else": TokenType.ELSE,
-    "endif": TokenType.END_IF,
-    "switch": TokenType.SWITCH,
-    "case": TokenType.CASE,
-    "default": TokenType.DEFAULT,
-    "endswitch": TokenType.END_SWITCH,
-    "break": TokenType.BREAK,
-    "while": TokenType.WHILE,
-    "endwhile": TokenType.END_WHILE,
-    "print": TokenType.PRINT,
-    "pass": TokenType.PASS,
+function getKeywords(): Record<string, TokenType> {
+    console.log("Generating keywords with print syntax:", config.printSyntax);
+    return {
+        "if": TokenType.IF,
+        "then": TokenType.THEN,
+        "elseif": TokenType.ELSE_IF,
+        "else": TokenType.ELSE,
+        "endif": TokenType.END_IF,
+        "switch": TokenType.SWITCH,
+        "case": TokenType.CASE,
+        "default": TokenType.DEFAULT,
+        "endswitch": TokenType.END_SWITCH,
+        "break": TokenType.BREAK,
+        "while": TokenType.WHILE,
+        "endwhile": TokenType.END_WHILE,
+        [config.printSyntax]: TokenType.PRINT,
+        "pass": TokenType.PASS,
+    }
 }
+
+// const KEYWORDS: Record<string, TokenType> = getKeywords();
 
 const BLOCK_OPENERS: Set<TokenType> = new Set([
     TokenType.IF,
@@ -271,7 +277,7 @@ export class Lexer {
     private identifier(): Token {
         let value = ""
 
-        while (!this.isAtEnd() && (this.isAlpha(this.peek()) || this.isDigit(this.peek()))) {
+        while (!this.isAtEnd() && (this.isAlpha(this.peek()) || this.isDigit(this.peek())) || this.peek() === "." || this.peek() === "-" ) {
             value += this.advance()
         }
 
@@ -280,7 +286,8 @@ export class Lexer {
         if (lower === "true" || lower === "false") {
             return this.makeToken(TokenType.BOOLEAN, lower)
         }
-        const type = KEYWORDS[lower] || TokenType.IDENTIFIER // Either a keyword or an identifier
+        const keywords = getKeywords();
+        const type = keywords[lower] || TokenType.IDENTIFIER // Either a keyword or an identifier
 
         if (this.codeStyle === CodeStyle.INDENT && BLOCK_OPENERS.has(type)) {
             this.expectedIndent = true;

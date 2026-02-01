@@ -1,12 +1,14 @@
 import { CodeStyle } from "./CodeStyle.js";
 
-type UserConfig = {
+export interface UserConfig {
     codeStyle: CodeStyle;
+    printSyntax: string;
     switchFallthrough: boolean;
 };
 
 const DEFAULT_CONFIG: UserConfig = {
     codeStyle: CodeStyle.INDENT,
+    printSyntax: "print",
     switchFallthrough: false,
 };
 
@@ -20,6 +22,7 @@ function loadConfig(): UserConfig {
         const parsed = JSON.parse(raw);
         return {
             codeStyle: parsed.codeStyle === CodeStyle.CURLY_BRACES ? CodeStyle.CURLY_BRACES : CodeStyle.INDENT,
+            printSyntax: typeof parsed.printSyntax.toLowerCase() === "string" && parsed.printSyntax.trim().length > 0 ? parsed.printSyntax.trim() : DEFAULT_CONFIG.printSyntax,
             switchFallthrough: Boolean(parsed.switchFallthrough),
         };
     }

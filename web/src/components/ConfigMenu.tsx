@@ -1,4 +1,5 @@
 import { config } from "../../../core/src/loader.js";
+import { validateKeyword } from "../keywordValidator.js";
 import { CodeStyle } from "../../../core/src/CodeStyle.js";
 import { useState } from "react";
 
@@ -34,7 +35,29 @@ export default function ConfigMenu() {
                 <option value="curly braces">Braces Based</option>
             </select>
 
-            <label className="text-lg block mb-2 font-semibold text-left">
+            <h2 className="text-xl font-bold mb-2 mt-6 text-left">Print Statement</h2>
+            <label className="text-md block mb-2 font-semibold text-left">
+                Print Keyword </label>
+            <input
+                type="text"
+                className="w-1/2 mb-4 p-2 border border-gray-300 rounded"
+                defaultValue={config.printSyntax}
+                placeholder="print"
+                onChange={(e) => {
+                    const value = e.target.value;
+                    const result = validateKeyword(value);
+
+                    if (!result.valid) {
+                        e.target.classList.add("border-red-500");
+                        return;
+                    }
+                    config.printSyntax = value.trim().toLowerCase();
+                    persistConfig();
+                }}
+            />
+
+            <h2 className="text-xl font-bold mb-2 mt-6 text-left">Switch-Case</h2>
+            <label className="text-md block mb-2 font-semibold text-left">
                 Switch Fallthrough
                 <input
                     type="checkbox"

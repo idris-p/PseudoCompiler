@@ -1,8 +1,9 @@
 import type Monaco from "monaco-editor";
+import { config } from "../../core/src/loader.js";
 
 export function registerPseudoLanguage(monacoInstance: typeof Monaco) {
     const KEYWORDS = ["if", "then", "else", "endif", "switch", "case", "default", "endswitch", "while", "endwhile", "pass", "break"];
-    const FUNCTIONS = ["print"]
+    const FUNCTIONS = [config.printSyntax]
     const BOOLEANS = ["true", "false"];
 
     monacoInstance.languages.register({ id: "pseudo" });
