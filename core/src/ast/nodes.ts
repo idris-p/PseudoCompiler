@@ -13,6 +13,7 @@ export type StatementNode =
     | BreakNode;
 
 export type ExpressionNode =
+    | UnaryExpressionNode
     | BinaryExpressionNode
     | NumberNode
     | StringNode
@@ -58,6 +59,12 @@ export type WhileNode = {
     type: "While";
     condition: ExpressionNode;
     body: StatementNode[];
+};
+
+export type UnaryExpressionNode = {
+    type: "UnaryExpression";
+    operator: string;
+    operand: ExpressionNode;
 };
 
 export type BinaryExpressionNode = {

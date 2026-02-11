@@ -472,11 +472,11 @@ export class Parser {
     }
 
     private parseFactor(): AST.ExpressionNode {
-        let expr = this.parsePrimary();
+        let expr = this.parseUnary();
 
         while (this.match(TokenType.STAR, TokenType.SLASH)) {
             const operator = this.previous().type;
-            const right = this.parsePrimary();
+            const right = this.parseUnary();
             expr = {
                 type: "BinaryExpression",
                 operator,
@@ -485,6 +485,21 @@ export class Parser {
             };
         }
         return expr;
+    }
+
+    private parseUnary(): AST.ExpressionNode {
+        if (this.match(TokenType.MINUS)) {
+            const operator = this.previous().type;
+            const right = this.parseUnary();
+            
+            return {
+                type: "UnaryExpression",
+                operator,
+                operand: right
+            };
+        }
+
+        return this.parsePrimary();
     }
 
     private parsePrimary(): AST.ExpressionNode {

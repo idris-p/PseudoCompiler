@@ -129,12 +129,25 @@ export class Interpreter {
                     throw new Error(`Undefined variable: ${node.name}`);
                 }
                 return this.environment.get(node.name);
+            case "UnaryExpression":
+                return this.evaluateUnaryExpression(node);
             case "BinaryExpression":
                 return this.evaluateBinaryExpression(node);
             default:
                 throw new Error(`Unknown expression type: ${(node as any).type}`);
         }
     }
+
+    private evaluateUnaryExpression(node: AST.UnaryExpressionNode): any {
+        const operand = this.evaluateExpression(node.operand);
+
+        switch (node.operator) {
+            case "MINUS":
+                return -operand;
+            default:
+                throw new Error(`Unknown unary operator: ${node.operator}`);
+        }
+    };
 
     private evaluateBinaryExpression(node: AST.BinaryExpressionNode): any {
         const left = this.evaluateExpression(node.left);

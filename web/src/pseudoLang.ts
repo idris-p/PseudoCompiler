@@ -96,68 +96,73 @@ function setLanguageConfig(monacoInstance: typeof Monaco) {
 
 /* ---------------- Completion Provider ---------------- */
 
+let completionDisposable: Monaco.IDisposable | null = null;
+
 function registerCompletionProvider(monacoInstance: typeof Monaco) {
-    monacoInstance.languages.registerCompletionItemProvider("pseudo", {
-        provideCompletionItems: (model, position) => {
-            const FUNCTIONS = [config.printSyntax]; // dynamic
+    // Prevent duplicate providers
+    if (completionDisposable) {
+        completionDisposable.dispose();
+    }
 
-            const word = model.getWordUntilPosition(position);
-            const code = model.getValue();
+    completionDisposable =
+        monacoInstance.languages.registerCompletionItemProvider("pseudo", {
+            provideCompletionItems: (model, position) => {
+                const FUNCTIONS = [config.printSyntax];
 
-            const variableMatches =
-                code.match(/\b([a-zA-Z_]\w*)\s*=/g) || [];
+                const word = model.getWordUntilPosition(position);
+                const code = model.getValue();
 
-            const variables = Array.from(
-                new Set(
-                    variableMatches.map((v) =>
-                        v.replace(/\s*=$/, "")
+                const variableMatches =
+                    code.match(/\b([a-zA-Z_]\w*)\s*=/g) || [];
+
+                const variables = Array.from(
+                    new Set(
+                        variableMatches.map((v) =>
+                            v.replace(/\s*=$/, "")
+                        )
                     )
-                )
-            );
+                );
 
-            const range = {
-                startLineNumber: position.lineNumber,
-                startColumn: word.startColumn,
-                endLineNumber: position.lineNumber,
-                endColumn: word.endColumn,
-            };
+                const range = {
+                    startLineNumber: position.lineNumber,
+                    startColumn: word.startColumn,
+                    endLineNumber: position.lineNumber,
+                    endColumn: word.endColumn,
+                };
 
-            const keywordSuggestions = KEYWORDS.map((kw) => ({
-                label: kw,
-                kind: monacoInstance.languages.CompletionItemKind.Keyword,
-                insertText: kw,
-                range,
-            }));
+                const allSuggestions = [
+                    ...KEYWORDS.map((kw) => ({
+                        label: kw,
+                        kind: monacoInstance.languages.CompletionItemKind.Keyword,
+                        insertText: kw,
+                        range,
+                    })),
+                    ...FUNCTIONS.map((fn) => ({
+                        label: fn,
+                        kind: monacoInstance.languages.CompletionItemKind.Function,
+                        insertText: fn,
+                        range,
+                    })),
+                    ...BOOLEANS.map((bool) => ({
+                        label: bool,
+                        kind: monacoInstance.languages.CompletionItemKind.Constant,
+                        insertText: bool,
+                        range,
+                    })),
+                    ...variables.map((v) => ({
+                        label: v,
+                        kind: monacoInstance.languages.CompletionItemKind.Variable,
+                        insertText: v,
+                        range,
+                    })),
+                ];
 
-            const functionSuggestions = FUNCTIONS.map((fn) => ({
-                label: fn,
-                kind: monacoInstance.languages.CompletionItemKind.Function,
-                insertText: fn,
-                range,
-            }));
+                // 🔥 Deduplicate by label
+                const unique = Array.from(
+                    new Map(allSuggestions.map(s => [s.label, s])).values()
+                );
 
-            const booleanSuggestions = BOOLEANS.map((bool) => ({
-                label: bool,
-                kind: monacoInstance.languages.CompletionItemKind.Constant,
-                insertText: bool,
-                range,
-            }));
-
-            const variableSuggestions = variables.map((v) => ({
-                label: v,
-                kind: monacoInstance.languages.CompletionItemKind.Variable,
-                insertText: v,
-                range,
-            }));
-
-            return {
-                suggestions: [
-                    ...keywordSuggestions,
-                    ...functionSuggestions,
-                    ...booleanSuggestions,
-                    ...variableSuggestions,
-                ],
-            };
-        },
-    });
+                return { suggestions: unique };
+            },
+        });
 }
