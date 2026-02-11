@@ -1,21 +1,25 @@
 import { TokenType } from "./token.js";
 import { CodeStyle } from "../CodeStyle.js";
-const KEYWORDS = {
-    "if": TokenType.IF,
-    "then": TokenType.THEN,
-    "elseif": TokenType.ELSE_IF,
-    "else": TokenType.ELSE,
-    "endif": TokenType.END_IF,
-    "switch": TokenType.SWITCH,
-    "case": TokenType.CASE,
-    "default": TokenType.DEFAULT,
-    "endswitch": TokenType.END_SWITCH,
-    "break": TokenType.BREAK,
-    "while": TokenType.WHILE,
-    "endwhile": TokenType.END_WHILE,
-    "print": TokenType.PRINT,
-    "pass": TokenType.PASS,
-};
+import { config } from "../loader.js";
+function getKeywords() {
+    return {
+        "if": TokenType.IF,
+        "then": TokenType.THEN,
+        "elseif": TokenType.ELSE_IF,
+        "else": TokenType.ELSE,
+        "endif": TokenType.END_IF,
+        "switch": TokenType.SWITCH,
+        "case": TokenType.CASE,
+        "default": TokenType.DEFAULT,
+        "endswitch": TokenType.END_SWITCH,
+        "break": TokenType.BREAK,
+        "while": TokenType.WHILE,
+        "endwhile": TokenType.END_WHILE,
+        [config.printSyntax]: TokenType.PRINT,
+        "pass": TokenType.PASS,
+    };
+}
+// const KEYWORDS: Record<string, TokenType> = getKeywords();
 const BLOCK_OPENERS = new Set([
     TokenType.IF,
     TokenType.ELSE_IF,
@@ -46,7 +50,7 @@ export class Lexer {
                 continue;
             }
             // Newline
-            if (char === '\n') {
+            if (char === '\n' || char === '\r') {
                 this.advanceLine();
                 if (this.isCommentLine()) {
                     this.skipLine();
@@ -228,14 +232,15 @@ export class Lexer {
     }
     identifier() {
         let value = "";
-        while (!this.isAtEnd() && (this.isAlpha(this.peek()) || this.isDigit(this.peek()))) {
+        while (!this.isAtEnd() && (this.isAlpha(this.peek()) || this.isDigit(this.peek())) || this.peek() === "." || this.peek() === "-") {
             value += this.advance();
         }
         const lower = value.toLowerCase();
         if (lower === "true" || lower === "false") {
             return this.makeToken(TokenType.BOOLEAN, lower);
         }
-        const type = KEYWORDS[lower] || TokenType.IDENTIFIER; // Either a keyword or an identifier
+        const keywords = getKeywords();
+        const type = keywords[lower] || TokenType.IDENTIFIER; // Either a keyword or an identifier
         if (this.codeStyle === CodeStyle.INDENT && BLOCK_OPENERS.has(type)) {
             this.expectedIndent = true;
         }
@@ -251,12 +256,36 @@ export class Lexer {
                 }
                 return this.makeToken(TokenType.EQUALS, "=");
             case "+":
+                if (this.peek() === "=") {
+                    this.advance();
+                    return this.makeToken(TokenType.PLUS_EQUALS, "+=");
+                }
+                if (this.peek() === "+") {
+                    this.advance();
+                    return this.makeToken(TokenType.DOUBLE_PLUS, "++");
+                }
                 return this.makeToken(TokenType.PLUS, "+");
             case "-":
+                if (this.peek() === "=") {
+                    this.advance();
+                    return this.makeToken(TokenType.MINUS_EQUALS, "-=");
+                }
+                if (this.peek() === "-") {
+                    this.advance();
+                    return this.makeToken(TokenType.DOUBLE_MINUS, "--");
+                }
                 return this.makeToken(TokenType.MINUS, "-");
             case "*":
+                if (this.peek() === "=") {
+                    this.advance();
+                    return this.makeToken(TokenType.STAR_EQUALS, "*=");
+                }
                 return this.makeToken(TokenType.STAR, "*");
             case "/":
+                if (this.peek() === "=") {
+                    this.advance();
+                    return this.makeToken(TokenType.SLASH_EQUALS, "/=");
+                }
                 if (this.peek() === "/") {
                     this.advance();
                     return this.makeToken(TokenType.DOUBLE_SLASH, "//");

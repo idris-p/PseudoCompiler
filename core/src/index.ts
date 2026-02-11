@@ -14,8 +14,8 @@ export function runPseudoCode(source: string) {
     const lexer = new Lexer(source, config.codeStyle)
     const tokens = lexer.tokenize()
 
-    console.log("Tokens:")
-    console.log(tokens)
+    // console.log("Tokens:")
+    // console.log(tokens)
 
     const parser = new Parser(tokens, config.codeStyle)
     const ast = parser.parse()
@@ -29,6 +29,7 @@ export function runPseudoCode(source: string) {
     return output;
 }
 
-runPseudoCode(`
-# Console.WriteLine("Hello World")
-`);
+// runPseudoCode(`
+// x = 5
+// x++
+// print x`);

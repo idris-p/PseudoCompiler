@@ -3,7 +3,6 @@ import { CodeStyle } from "../CodeStyle.js"
 import { config } from "../loader.js";
 
 function getKeywords(): Record<string, TokenType> {
-    console.log("Generating keywords with print syntax:", config.printSyntax);
     return {
         "if": TokenType.IF,
         "then": TokenType.THEN,
@@ -62,7 +61,7 @@ export class Lexer {
             }
 
             // Newline
-            if (char === '\n') {
+            if (char === '\n' || char === '\r') {
                 this.advanceLine();
 
                 if (this.isCommentLine()) {
@@ -307,12 +306,36 @@ export class Lexer {
                 }
                 return this.makeToken(TokenType.EQUALS, "=")
             case "+":
+                if (this.peek() === "=") {
+                    this.advance()
+                    return this.makeToken(TokenType.PLUS_EQUALS, "+=")
+                }
+                if (this.peek() === "+") {
+                    this.advance()
+                    return this.makeToken(TokenType.DOUBLE_PLUS, "++")
+                }
                 return this.makeToken(TokenType.PLUS, "+")
             case "-":
+                if (this.peek() === "=") {
+                    this.advance()
+                    return this.makeToken(TokenType.MINUS_EQUALS, "-=")
+                }
+                if (this.peek() === "-") {
+                    this.advance()
+                    return this.makeToken(TokenType.DOUBLE_MINUS, "--")
+                }
                 return this.makeToken(TokenType.MINUS, "-")
             case "*":
+                if (this.peek() === "=") {
+                    this.advance()
+                    return this.makeToken(TokenType.STAR_EQUALS, "*=")
+                }
                 return this.makeToken(TokenType.STAR, "*")
             case "/":
+                if (this.peek() === "=") {
+                    this.advance()
+                    return this.makeToken(TokenType.SLASH_EQUALS, "/=")
+                }
                 if (this.peek() === "/") {
                     this.advance()
                     return this.makeToken(TokenType.DOUBLE_SLASH, "//")

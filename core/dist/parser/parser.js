@@ -194,23 +194,83 @@ export class Parser {
             return this.parseWhileStatement();
         }
         if (this.checkType(TokenType.IDENTIFIER)) {
-            return this.parseAssignment();
+            return this.parseAssignmentOrCompound();
         }
         if (this.match(TokenType.PASS)) {
             return this.parsePassStatement();
         }
+        if (this.match(TokenType.BREAK)) {
+            return this.parseBreakStatement();
+        }
         throw new Error("Syntax Error: Unexpected '" + this.peek().value + "' at line " + this.peek().line + ", column " + (this.peek().column - this.peek().value.length));
     }
-    parseAssignment() {
+    parseAssignmentOrCompound() {
         const name = this.consume(TokenType.IDENTIFIER, "Expected variable name. Got '" + this.peek().value + "' instead. Line " + this.peek().line + ", Column " + this.peek().column);
-        this.consume(TokenType.EQUALS, "Syntax Error: Expected '=' after variable name at line " + this.peek().line + ", column " + (this.peek().column - 1));
-        const value = this.parseExpression();
-        this.consumeStatementTerminator();
-        return {
-            type: "VariableAssignment",
-            name: name.value,
-            value
+        const identifier = {
+            type: "Identifier",
+            name: name.value
         };
+        if (this.match(TokenType.DOUBLE_PLUS, TokenType.DOUBLE_MINUS)) {
+            const operatorToken = this.previous().type;
+            const operator = operatorToken === TokenType.DOUBLE_PLUS ? TokenType.PLUS : TokenType.MINUS;
+            this.consumeStatementTerminator();
+            return {
+                type: "VariableAssignment",
+                name: name.value,
+                value: {
+                    type: "BinaryExpression",
+                    operator,
+                    left: identifier,
+                    right: {
+                        type: "Number",
+                        value: 1
+                    }
+                }
+            };
+        }
+        if (this.match(TokenType.PLUS_EQUALS, TokenType.MINUS_EQUALS, TokenType.STAR_EQUALS, TokenType.SLASH_EQUALS)) {
+            const compoundOp = this.previous().type;
+            const right = this.parseExpression();
+            this.consumeStatementTerminator();
+            let operator;
+            switch (compoundOp) {
+                case TokenType.PLUS_EQUALS:
+                    operator = TokenType.PLUS;
+                    break;
+                case TokenType.MINUS_EQUALS:
+                    operator = TokenType.MINUS;
+                    break;
+                case TokenType.STAR_EQUALS:
+                    operator = TokenType.STAR;
+                    break;
+                case TokenType.SLASH_EQUALS:
+                    operator = TokenType.SLASH;
+                    break;
+                default:
+                    throw new Error("Unreachable");
+            }
+            return {
+                type: "VariableAssignment",
+                name: name.value,
+                value: {
+                    type: "BinaryExpression",
+                    operator,
+                    left: identifier,
+                    right
+                }
+            };
+        }
+        // x = y
+        if (this.match(TokenType.EQUALS)) {
+            const value = this.parseExpression();
+            this.consumeStatementTerminator();
+            return {
+                type: "VariableAssignment",
+                name: name.value,
+                value
+            };
+        }
+        throw new Error("Syntax Error: Expected assignment operator after variable name at line " + this.peek().line + ", column " + (this.peek().column - 1));
     }
     parsePrintStatement() {
         const expression = this.parseExpression();
@@ -270,6 +330,7 @@ export class Parser {
                 break;
             }
         }
+        this.skipNewlinesAndSemicolons();
         this.endBlock();
         this.consumeBlockTerminator(BlockType.SWITCH);
         return {
@@ -293,6 +354,12 @@ export class Parser {
         this.consumeStatementTerminator();
         return {
             type: "Pass"
+        };
+    }
+    parseBreakStatement() {
+        this.consumeStatementTerminator();
+        return {
+            type: "Break"
         };
     }
     parseExpression() {
