@@ -13,11 +13,11 @@ function getKeywords(): Record<string, TokenType> {
         "case": TokenType.CASE,
         "default": TokenType.DEFAULT,
         "endswitch": TokenType.END_SWITCH,
-        "break": TokenType.BREAK,
+        [config.breakSyntax]: TokenType.BREAK,
         "while": TokenType.WHILE,
         "endwhile": TokenType.END_WHILE,
         [config.printSyntax]: TokenType.PRINT,
-        "pass": TokenType.PASS,
+        [config.passSyntax]: TokenType.PASS,
     }
 }
 

@@ -1,9 +1,10 @@
 import type Monaco from "monaco-editor";
 import { config } from "../../core/src/loader.js";
 
-const KEYWORDS = [
+const STATIC_KEYWORDS = [
     "if",
     "then",
+    "elseif",
     "else",
     "endif",
     "switch",
@@ -12,8 +13,6 @@ const KEYWORDS = [
     "endswitch",
     "while",
     "endwhile",
-    "pass",
-    "break",
 ];
 
 const BOOLEANS = ["true", "false"];
@@ -36,6 +35,7 @@ export function refreshPseudoLanguage(monacoInstance: typeof Monaco) {
 /* ---------------- Tokenizer ---------------- */
 
 function setTokenizer(monacoInstance: typeof Monaco) {
+    const KEYWORDS = [...STATIC_KEYWORDS, config.breakSyntax, config.passSyntax];
     const FUNCTIONS = [config.printSyntax];
 
     monacoInstance.languages.setMonarchTokensProvider("pseudo", {
@@ -129,6 +129,8 @@ function registerCompletionProvider(monacoInstance: typeof Monaco) {
                     endLineNumber: position.lineNumber,
                     endColumn: word.endColumn,
                 };
+
+                const KEYWORDS = [...STATIC_KEYWORDS, config.breakSyntax, config.passSyntax];
 
                 const allSuggestions = [
                     ...KEYWORDS.map((kw) => ({
