@@ -12,11 +12,15 @@ function getKeywords() {
         "case": TokenType.CASE,
         "default": TokenType.DEFAULT,
         "endswitch": TokenType.END_SWITCH,
-        "break": TokenType.BREAK,
+        "for": TokenType.FOR,
+        "to": TokenType.TO,
+        "step": TokenType.STEP,
+        "endfor": TokenType.END_FOR,
+        [config.breakSyntax]: TokenType.BREAK,
         "while": TokenType.WHILE,
         "endwhile": TokenType.END_WHILE,
         [config.printSyntax]: TokenType.PRINT,
-        "pass": TokenType.PASS,
+        [config.passSyntax]: TokenType.PASS,
     };
 }
 // const KEYWORDS: Record<string, TokenType> = getKeywords();
@@ -27,6 +31,7 @@ const BLOCK_OPENERS = new Set([
     TokenType.SWITCH,
     TokenType.CASE,
     TokenType.DEFAULT,
+    TokenType.FOR,
     TokenType.WHILE,
 ]);
 // Lexer Class - converts source code into tokens
@@ -80,7 +85,7 @@ export class Lexer {
                 continue;
             }
             // Comments
-            if (char === '#') {
+            if (char === config.commentSyntax || char + this.peek() === config.commentSyntax) {
                 // Skip comments
                 while (!this.isAtEnd() && this.peek() !== '\n') {
                     this.advance();
@@ -152,7 +157,7 @@ export class Lexer {
                 pos++;
                 continue;
             }
-            if (char === '#')
+            if (char === config.commentSyntax)
                 return true;
             if (char === '\n')
                 return false;
@@ -322,13 +327,6 @@ export class Lexer {
                     return this.makeToken(TokenType.GREATER_EQUAL, ">=");
                 }
                 return this.makeToken(TokenType.GREATER, ">");
-            // case "#":
-            //     // return this.makeToken(TokenType.HASH, "#")
-            //     // Skip comments
-            //     while (!this.isAtEnd() && this.peek() !== '\n') {
-            //         this.advance()
-            //     }
-            //     return this.makeToken(TokenType.NEWLINE, "new line")
             default:
                 throw new Error(`Syntax Error: Unexpected character '${char}' at line ${this.line}, column ${this.column - 1}`);
         }

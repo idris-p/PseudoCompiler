@@ -11,6 +11,10 @@ const STATIC_KEYWORDS = [
     "case",
     "default",
     "endswitch",
+    "for",
+    "to",
+    "step",
+    "endfor",
     "while",
     "endwhile",
 ];
@@ -25,11 +29,12 @@ export function registerPseudoLanguage(monacoInstance: typeof Monaco) {
     registerCompletionProvider(monacoInstance);
 }
 
-/**
- * Call this whenever config.printSyntax changes.
- */
 export function refreshPseudoLanguage(monacoInstance: typeof Monaco) {
     setTokenizer(monacoInstance);
+}
+
+function escapeRegex(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /* ---------------- Tokenizer ---------------- */
@@ -44,7 +49,7 @@ function setTokenizer(monacoInstance: typeof Monaco) {
         tokenizer: {
             root: [
                 // Comments
-                [/#.*$/, "comment"],
+                [new RegExp(`${escapeRegex(config.commentSyntax)}.*$`), "comment"],
 
                 // Keywords
                 [new RegExp(`\\b(${KEYWORDS.join("|")})\\b`), "keyword"],
@@ -77,7 +82,7 @@ function setTokenizer(monacoInstance: typeof Monaco) {
 function setLanguageConfig(monacoInstance: typeof Monaco) {
     monacoInstance.languages.setLanguageConfiguration("pseudo", {
         comments: {
-            lineComment: "#",
+            lineComment: config.commentSyntax,
         },
         brackets: [
             ["{", "}"],

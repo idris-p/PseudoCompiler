@@ -8,6 +8,7 @@ export type StatementNode =
     | PrintNode
     | IfNode
     | SwitchNode
+    | ForNode
     | WhileNode
     | PassNode
     | BreakNode;
@@ -58,6 +59,14 @@ export type SwitchCaseNode = {
 export type WhileNode = {
     type: "While";
     condition: ExpressionNode;
+    body: StatementNode[];
+};
+
+export type ForNode = {
+    type: "For";
+    initializer?: StatementNode;
+    condition?: ExpressionNode;
+    update?: StatementNode;
     body: StatementNode[];
 };
 

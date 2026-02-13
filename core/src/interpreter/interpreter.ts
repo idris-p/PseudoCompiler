@@ -39,6 +39,9 @@ export class Interpreter {
             case "Switch":
                 this.executeSwitch(node);
                 break;
+            case "For":
+                this.executeFor(node);
+                break;
             case "While":
                 this.executeWhile(node);
                 break;
@@ -98,6 +101,28 @@ export class Interpreter {
                 return;
             } else {
                 throw e;
+            }
+        }
+    }
+
+    private executeFor(node: AST.ForNode) {
+        if (node.initializer) {
+            this.executeStatement(node.initializer);
+        }
+
+        while (!node.condition || this.evaluateExpression(node.condition)) {
+            try {
+                node.body.forEach(stmt => this.executeStatement(stmt));
+            }
+            catch (e) {
+                if (e instanceof BreakSignal) {
+                    break;
+                } else {
+                    throw e;
+                }
+            }
+            if (node.update) {
+                this.executeStatement(node.update);
             }
         }
     }

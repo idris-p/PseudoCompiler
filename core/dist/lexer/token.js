@@ -13,6 +13,8 @@ export var TokenType;
     TokenType["END_SWITCH"] = "END_SWITCH";
     TokenType["BREAK"] = "BREAK";
     TokenType["FOR"] = "FOR";
+    TokenType["TO"] = "TO";
+    TokenType["STEP"] = "STEP";
     TokenType["END_FOR"] = "END_FOR";
     TokenType["WHILE"] = "WHILE";
     TokenType["END_WHILE"] = "END_WHILE";

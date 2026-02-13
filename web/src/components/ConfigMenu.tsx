@@ -1,5 +1,4 @@
 import { config } from "../../../core/src/loader.js";
-import { validateKeyword } from "../keywordValidator.js";
 import { CodeStyle } from "../../../core/src/CodeStyle.js";
 import { refreshPseudoLanguage } from "../pseudoLang.js";
 import KeywordField from "./KeywordField";
@@ -12,6 +11,8 @@ interface ConfigMenuProps {
 
 export default function ConfigMenu({ monaco }: ConfigMenuProps) {
     const [switchFallthrough, setSwitchFallthrough] = useState(config.switchFallthrough);
+    const [forInclusiveLower, setForInclusiveLower] = useState(config.forInclusive[0]);
+    const [forInclusiveUpper, setForInclusiveUpper] = useState(config.forInclusive[1]);
 
     function persistConfig() {
         localStorage.setItem("pseudoCodeConfig", JSON.stringify(config));
@@ -28,6 +29,13 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
         persistConfig();
     };
 
+    /* ---------------- Comment Symbol ---------------- */
+
+    const handleCommentSymbolChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        config.commentSyntax = e.target.value as typeof config.commentSyntax;
+        persistConfig();
+    };
+
     /* ---------------- Switch Fallthrough ---------------- */
 
     const handleSwitchFallthroughChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -36,50 +44,6 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
         persistConfig();
     };
 
-    /* ---------------- Print Keyword ---------------- */
-
-    // const handlePrintChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    //     const value = e.target.value;
-    //     setPrintValue(value);
-
-    //     const result = validateKeyword(value);
-
-    //     if (!result.valid) {
-    //         setPrintError(true);
-    //         return;
-    //     }
-
-    //     setPrintError(false);
-
-    //     config.printSyntax = value.trim().toLowerCase();
-    //     persistConfig();
-
-    //     // 🔥 Refresh Monaco tokenizer
-    //     if (monaco) {
-    //         refreshPseudoLanguage(monaco);
-    //     }
-    // };
-
-    // const handlePassChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    //     const value = e.target.value;
-    //     setPassValue(value);
-
-    //     const result = validateKeyword(value);
-
-    //     if (!result.valid) {
-    //         setPassError(true);
-    //         return;
-    //     }
-
-    //     setPassError(false);
-    //     config.passSyntax = value.trim().toLowerCase();
-    //     persistConfig();
-
-    //     // 🔥 Refresh Monaco tokenizer
-    //     if (monaco) {
-    //         refreshPseudoLanguage(monaco);
-    //     }
-    // };
 
     return (
         <div className="h-full bg-gray-50 dark:bg-neutral-800 text-gray-700 dark:text-gray-300 p-8 overflow-y-scroll text-left">
@@ -98,6 +62,21 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
             >
                 <option value="indent">Indentation Based</option>
                 <option value="curly braces">Braces Based</option>
+            </select>
+
+            <label className="text-lg block mb-2 font-semibold">
+                Comment Symbol
+            </label>
+
+            <select
+                className="w-1/2 mb-6 p-2 border border-gray-300 rounded"
+                defaultValue={config.commentSyntax}
+                onChange={handleCommentSymbolChange}
+            >
+                <option value="#">#</option>
+                <option value="//">//</option>
+                <option value="%">%</option>
+                <option value="--">--</option>
             </select>
 
             <h2 className="text-xl font-bold mb-2 mt-4">
@@ -128,6 +107,38 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                     className="ml-2"
                     checked={switchFallthrough}
                     onChange={handleSwitchFallthroughChange}
+                />
+            </label>
+
+            <h2 className="text-xl font-bold mb-2 mt-4">
+                For Loops
+            </h2>
+
+            <label className="text-md block mb-4 font-semibold">
+                Lower Bound Inclusive
+                <input
+                    type="checkbox"
+                    className="ml-2"
+                    checked={forInclusiveLower}
+                    onChange={(e) => {
+                        setForInclusiveLower(e.target.checked);
+                        config.forInclusive[0] = e.target.checked;
+                        persistConfig();
+                    }}
+                />
+            </label>
+
+            <label className="text-md block mb-4 font-semibold">
+                Upper Bound Inclusive
+                <input
+                    type="checkbox"
+                    className="ml-2"
+                    checked={forInclusiveUpper}
+                    onChange={(e) => {
+                        setForInclusiveUpper(e.target.checked);
+                        config.forInclusive[1] = e.target.checked;
+                        persistConfig();
+                    }}
                 />
             </label>
 

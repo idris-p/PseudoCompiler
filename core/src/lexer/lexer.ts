@@ -13,6 +13,10 @@ function getKeywords(): Record<string, TokenType> {
         "case": TokenType.CASE,
         "default": TokenType.DEFAULT,
         "endswitch": TokenType.END_SWITCH,
+        "for": TokenType.FOR,
+        "to": TokenType.TO,
+        "step": TokenType.STEP,
+        "endfor": TokenType.END_FOR,
         [config.breakSyntax]: TokenType.BREAK,
         "while": TokenType.WHILE,
         "endwhile": TokenType.END_WHILE,
@@ -30,6 +34,7 @@ const BLOCK_OPENERS: Set<TokenType> = new Set([
     TokenType.SWITCH,
     TokenType.CASE,
     TokenType.DEFAULT,
+    TokenType.FOR,
     TokenType.WHILE,
 ])
 
@@ -97,7 +102,7 @@ export class Lexer {
             }
 
             // Comments
-            if (char === '#') {
+            if (char === config.commentSyntax || char + this.peek() === config.commentSyntax) {
                 // Skip comments
                 while (!this.isAtEnd() && this.peek() !== '\n') {
                     this.advance()
@@ -180,7 +185,7 @@ export class Lexer {
                 continue;
             }
 
-            if (char === '#') return true;
+            if (char === config.commentSyntax) return true;
             if (char === '\n') return false;
             return false;
         }
@@ -372,13 +377,6 @@ export class Lexer {
                     return this.makeToken(TokenType.GREATER_EQUAL, ">=")
                 }
                 return this.makeToken(TokenType.GREATER, ">")
-            // case "#":
-            //     // return this.makeToken(TokenType.HASH, "#")
-            //     // Skip comments
-            //     while (!this.isAtEnd() && this.peek() !== '\n') {
-            //         this.advance()
-            //     }
-            //     return this.makeToken(TokenType.NEWLINE, "new line")
             default:
                 throw new Error(`Syntax Error: Unexpected character '${char}' at line ${this.line}, column ${this.column - 1}`)
         }

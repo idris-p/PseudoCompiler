@@ -15,6 +15,8 @@ export enum TokenType {
     BREAK = "BREAK",
 
     FOR = "FOR",
+    TO = "TO",
+    STEP = "STEP",
     END_FOR = "END_FOR",
 
     WHILE = "WHILE",

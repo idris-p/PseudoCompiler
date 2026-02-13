@@ -8,7 +8,8 @@ var BlockType;
     BlockType[BlockType["SWITCH"] = 3] = "SWITCH";
     BlockType[BlockType["CASE"] = 4] = "CASE";
     BlockType[BlockType["DEFAULT"] = 5] = "DEFAULT";
-    BlockType[BlockType["WHILE"] = 6] = "WHILE";
+    BlockType[BlockType["FOR"] = 6] = "FOR";
+    BlockType[BlockType["WHILE"] = 7] = "WHILE";
 })(BlockType || (BlockType = {}));
 // Parser Class - converts tokens into AST
 export class Parser {
@@ -96,6 +97,12 @@ export class Parser {
         }
         if (blockType === BlockType.SWITCH) {
             if (this.match(TokenType.END_SWITCH)) {
+                this.consumeStatementTerminator();
+                return;
+            }
+        }
+        if (blockType === BlockType.FOR) {
+            if (this.match(TokenType.END_FOR)) {
                 this.consumeStatementTerminator();
                 return;
             }
@@ -190,6 +197,9 @@ export class Parser {
         if (this.match(TokenType.SWITCH)) {
             return this.parseSwitchStatement();
         }
+        if (this.match(TokenType.FOR)) {
+            return this.parseForStatement();
+        }
         if (this.match(TokenType.WHILE)) {
             return this.parseWhileStatement();
         }
@@ -205,15 +215,22 @@ export class Parser {
         throw new Error("Syntax Error: Unexpected '" + this.peek().value + "' at line " + this.peek().line + ", column " + (this.peek().column - this.peek().value.length));
     }
     parseAssignmentOrCompound() {
-        const name = this.consume(TokenType.IDENTIFIER, "Expected variable name. Got '" + this.peek().value + "' instead. Line " + this.peek().line + ", Column " + this.peek().column);
+        const assignment = this.parseAssignment();
+        this.consumeStatementTerminator();
+        return assignment;
+    }
+    parseAssignment() {
+        const name = this.consume(TokenType.IDENTIFIER, "Expected variable name.");
         const identifier = {
             type: "Identifier",
             name: name.value
         };
+        // ++ / --
         if (this.match(TokenType.DOUBLE_PLUS, TokenType.DOUBLE_MINUS)) {
             const operatorToken = this.previous().type;
-            const operator = operatorToken === TokenType.DOUBLE_PLUS ? TokenType.PLUS : TokenType.MINUS;
-            this.consumeStatementTerminator();
+            const operator = operatorToken === TokenType.DOUBLE_PLUS
+                ? TokenType.PLUS
+                : TokenType.MINUS;
             return {
                 type: "VariableAssignment",
                 name: name.value,
@@ -221,17 +238,14 @@ export class Parser {
                     type: "BinaryExpression",
                     operator,
                     left: identifier,
-                    right: {
-                        type: "Number",
-                        value: 1
-                    }
+                    right: { type: "Number", value: 1 }
                 }
             };
         }
+        // += -= *= /=
         if (this.match(TokenType.PLUS_EQUALS, TokenType.MINUS_EQUALS, TokenType.STAR_EQUALS, TokenType.SLASH_EQUALS)) {
             const compoundOp = this.previous().type;
             const right = this.parseExpression();
-            this.consumeStatementTerminator();
             let operator;
             switch (compoundOp) {
                 case TokenType.PLUS_EQUALS:
@@ -246,8 +260,7 @@ export class Parser {
                 case TokenType.SLASH_EQUALS:
                     operator = TokenType.SLASH;
                     break;
-                default:
-                    throw new Error("Unreachable");
+                default: throw new Error("Unreachable");
             }
             return {
                 type: "VariableAssignment",
@@ -260,17 +273,16 @@ export class Parser {
                 }
             };
         }
-        // x = y
+        // =
         if (this.match(TokenType.EQUALS)) {
             const value = this.parseExpression();
-            this.consumeStatementTerminator();
             return {
                 type: "VariableAssignment",
                 name: name.value,
                 value
             };
         }
-        throw new Error("Syntax Error: Expected assignment operator after variable name at line " + this.peek().line + ", column " + (this.peek().column - 1));
+        throw new Error("Expected assignment operator.");
     }
     parsePrintStatement() {
         const expression = this.parseExpression();
@@ -340,6 +352,82 @@ export class Parser {
             defaultBody: defaultCase
         };
     }
+    parseForStatement() {
+        if (this.match(TokenType.LEFT_PAREN)) {
+            // C-style for loop: for (initializer; condition; update) { ... }
+            let initializer;
+            if (!this.checkType(TokenType.SEMI_COLON)) {
+                initializer = this.parseAssignment();
+            }
+            this.consume(TokenType.SEMI_COLON, "Syntax Error: Expected ';' after for loop initializer at line " + this.peek().line + ", column " + this.peek().column);
+            let condition;
+            if (!this.checkType(TokenType.SEMI_COLON)) {
+                condition = this.parseExpression();
+            }
+            this.consume(TokenType.SEMI_COLON, "Syntax Error: Expected ';' after for loop condition at line " + this.peek().line + ", column " + this.peek().column);
+            let update;
+            if (!this.checkType(TokenType.RIGHT_PAREN)) {
+                update = this.parseAssignment();
+            }
+            this.consume(TokenType.RIGHT_PAREN, "Syntax Error: Expected ')' after for loop clauses at line " + this.peek().line + ", column " + this.peek().column);
+            const body = this.parseBlock(BlockType.FOR);
+            this.consumeBlockTerminator(BlockType.FOR);
+            return {
+                type: "For",
+                initializer,
+                condition,
+                update,
+                body
+            };
+        }
+        else {
+            // Python-style for loop: for i = 0 to 10 { ... }
+            const variable = this.consume(TokenType.IDENTIFIER, "Syntax Error: Expected variable name in for loop at line " + this.peek().line + ", column " + this.peek().column).value;
+            this.consume(TokenType.EQUALS, "Syntax Error: Expected '=' after variable name in for loop at line " + this.peek().line + ", column " + this.peek().column);
+            const start = this.parseExpression();
+            this.consume(TokenType.TO, "Syntax Error: Expected 'to' in for loop after start expression at line " + this.peek().line + ", column " + this.peek().column);
+            const end = this.parseExpression();
+            const initializer = {
+                type: "VariableAssignment",
+                name: variable,
+                value: start
+            };
+            const condition = {
+                type: "BinaryExpression",
+                operator: TokenType.LESS, // Can change to LESS_EQUAL if you want inclusive range
+                left: {
+                    type: "Identifier",
+                    name: variable
+                },
+                right: end
+            };
+            const update = {
+                type: "VariableAssignment",
+                name: variable,
+                value: {
+                    type: "BinaryExpression",
+                    operator: TokenType.PLUS,
+                    left: {
+                        type: "Identifier",
+                        name: variable
+                    },
+                    right: {
+                        type: "Number",
+                        value: 1
+                    }
+                }
+            };
+            const body = this.parseBlock(BlockType.FOR);
+            this.consumeBlockTerminator(BlockType.FOR);
+            return {
+                type: "For",
+                initializer,
+                condition,
+                update,
+                body
+            };
+        }
+    }
     parseWhileStatement() {
         const condition = this.parseExpression();
         const body = this.parseBlock(BlockType.WHILE);
@@ -408,10 +496,10 @@ export class Parser {
         return expr;
     }
     parseFactor() {
-        let expr = this.parsePrimary();
+        let expr = this.parseUnary();
         while (this.match(TokenType.STAR, TokenType.SLASH)) {
             const operator = this.previous().type;
-            const right = this.parsePrimary();
+            const right = this.parseUnary();
             expr = {
                 type: "BinaryExpression",
                 operator,
@@ -420,6 +508,18 @@ export class Parser {
             };
         }
         return expr;
+    }
+    parseUnary() {
+        if (this.match(TokenType.MINUS)) {
+            const operator = this.previous().type;
+            const right = this.parseUnary();
+            return {
+                type: "UnaryExpression",
+                operator,
+                operand: right
+            };
+        }
+        return this.parsePrimary();
     }
     parsePrimary() {
         if (this.match(TokenType.NUMBER)) {

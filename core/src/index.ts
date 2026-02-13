@@ -9,8 +9,6 @@ export function runPseudoCode(source: string) {
     // console.log("Source Code:")
     // console.log(source)
 
-    // console.log("Using Print Syntax:", config.printSyntax);
-
     const lexer = new Lexer(source, config.codeStyle)
     const tokens = lexer.tokenize()
 
@@ -30,6 +28,7 @@ export function runPseudoCode(source: string) {
 }
 
 // runPseudoCode(`
-// x = 5
-// x++
-// print x`);
+// for (i = 0; i < 5; i++)
+//     print(i)
+// endfor
+// `);
