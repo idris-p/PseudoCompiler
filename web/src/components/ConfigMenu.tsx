@@ -36,6 +36,13 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
         persistConfig();
     };
 
+    /* ---------------- Assignment Symbol ---------------- */
+
+    const handleAssignmentSymbolChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        config.assignmentSyntax = e.target.value as typeof config.assignmentSyntax;
+        persistConfig();
+    };
+
     /* ---------------- Switch Fallthrough ---------------- */
 
     const handleSwitchFallthroughChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,6 +84,20 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 <option value="//">//</option>
                 <option value="%">%</option>
                 <option value="--">--</option>
+            </select>
+
+            <label className="text-lg block mb-2 font-semibold">
+                Assignment Symbol
+            </label>
+
+            <select
+                className="w-1/2 mb-6 p-2 border border-gray-300 rounded"
+                defaultValue={config.assignmentSyntax}
+                onChange={handleAssignmentSymbolChange}
+            >
+                <option value="=">=</option>
+                <option value="<-">&lt;-</option>
+                <option value=":=">:=</option>
             </select>
 
             <h2 className="text-xl font-bold mb-2 mt-4">

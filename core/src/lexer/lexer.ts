@@ -357,6 +357,10 @@ export class Lexer {
             case ",":
                 return this.makeToken(TokenType.COMMA, ",")
             case ":":
+                if (this.peek() === "=") {
+                    this.advance()
+                    return this.makeToken(TokenType.COLON_EQUALS, ":=")
+                }
                 return this.makeToken(TokenType.COLON, ":")
             case ";":
                 return this.makeToken(TokenType.SEMI_COLON, ";")
@@ -369,6 +373,10 @@ export class Lexer {
                 if (this.peek() === "=") {
                     this.advance()
                     return this.makeToken(TokenType.LESS_EQUAL, "<=")
+                }
+                if (this.peek() === "-" && config.assignmentSyntax === "<-") {
+                    this.advance()
+                    return this.makeToken(TokenType.LEFT_ARROW, "<-")
                 }
                 return this.makeToken(TokenType.LESS, "<")
             case ">":

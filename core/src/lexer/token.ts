@@ -49,6 +49,8 @@ export enum TokenType {
     GREATER = "GREATER",
     LESS_EQUAL = "LESS_EQUAL",
     GREATER_EQUAL = "GREATER_EQUAL",
+    LEFT_ARROW = "LEFT_ARROW",
+    COLON_EQUALS = "COLON_EQUALS",
 
     // Symbols
     LEFT_PAREN = "LEFT_PAREN",

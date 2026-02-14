@@ -1,9 +1,9 @@
 import { Lexer } from "./lexer/lexer.js"
 import { Parser } from "./parser/parser.js"
-import { Interpreter } from "./interpreter/interpreter.js"
+import { Interpreter, RuntimeIO } from "./interpreter/interpreter.js"
 import { config } from "./loader.js"
 
-export function runPseudoCode(source: string) {
+export async function runPseudoCode(source: string, io: RuntimeIO) {
     source = source.replace(/\t/g, "    "); // Replace tabs with 4 spaces for consistency
 
     // console.log("Source Code:")
@@ -21,10 +21,8 @@ export function runPseudoCode(source: string) {
     // console.log("AST:")
     // console.log(JSON.stringify(ast, null, 2))
 
-    const interpreter = new Interpreter()
-    const output = interpreter.run(ast)
-
-    return output;
+    const interpreter = new Interpreter(io)
+    await interpreter.run(ast)
 }
 
 // runPseudoCode(`

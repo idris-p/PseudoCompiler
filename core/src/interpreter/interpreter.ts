@@ -8,21 +8,30 @@ export type ExecutionResult = {
 
 class BreakSignal {}
 
+export type RuntimeIO = {
+    write: (value: string) => void;                 // stream output immediately
+    read: (prompt?: string) => Promise<string>;     // request user input (pauses program)
+};
+
+
 // Interpreter Class - executes the AST
 export class Interpreter {
     private environment: Map<string, any> = new Map();
-    private output: any[] = [];
+    private io: RuntimeIO;
 
-    run(program: AST.ProgramNode): ExecutionResult {
-        this.environment.clear();
-        this.output = [];
-        for (const statement of program.body) {
-            this.executeStatement(statement);
-        }
-        return { output: this.output, environment: this.environment };
+    constructor(io: RuntimeIO) {
+        this.io = io;
     }
 
-    private executeStatement(node: AST.StatementNode): void {
+    async run(program: AST.ProgramNode): Promise<ExecutionResult> {
+        this.environment.clear();
+        for (const statement of program.body) {
+            await this.executeStatement(statement);
+        }
+        return { output: [], environment: this.environment };
+    }
+
+    private async executeStatement(node: AST.StatementNode): Promise<void> {
         switch (node.type) {
             case "Program":
                 node.body.forEach(stmt => this.executeStatement(stmt));
@@ -31,19 +40,19 @@ export class Interpreter {
                 this.executeAssignment(node);
                 break;
             case "Print":
-                this.executePrint(node);
+                await this.executePrint(node);
                 break;
             case "If":
-                this.executeIf(node);
+                await this.executeIf(node);
                 break;
             case "Switch":
-                this.executeSwitch(node);
+                await this.executeSwitch(node);
                 break;
             case "For":
-                this.executeFor(node);
+                await this.executeFor(node);
                 break;
             case "While":
-                this.executeWhile(node);
+                await this.executeWhile(node);
                 break;
             case "Pass":
                 // Do nothing
@@ -60,23 +69,27 @@ export class Interpreter {
         this.environment.set(node.name, value);
     }
 
-    private executePrint(node: AST.PrintNode) {
+    private async executePrint(node: AST.PrintNode) {
         const value = this.evaluateExpression(node.expression);
         console.log(value);
-        this.output.push(value);
+        this.io.write(String(value));
     }
 
-    private executeIf(node: AST.IfNode) {
+    private async executeIf(node: AST.IfNode) {
         const condition = this.evaluateExpression(node.condition);
 
         if (condition) {
-            node.thenBody.forEach(stmt => this.executeStatement(stmt));
+            for (const stmt of node.thenBody) {
+                await this.executeStatement(stmt);
+            }
         } else if (node.elseBody) {
-            node.elseBody.forEach(stmt => this.executeStatement(stmt));
+            for (const stmt of node.elseBody) {
+                await this.executeStatement(stmt);
+            }
         }
     }
 
-    private executeSwitch(node: AST.SwitchNode) {
+    private async executeSwitch(node: AST.SwitchNode) {
         const switchValue = this.evaluateExpression(node.expression);
         let caseMatched = false;
 
@@ -86,14 +99,18 @@ export class Interpreter {
 
                 if (switchValue === caseValue || caseMatched) {
                     caseMatched = true;
-                    caseNode.body.forEach(stmt => this.executeStatement(stmt));
+                    for (const stmt of caseNode.body) {
+                        await this.executeStatement(stmt);
+                    }
                     if (!config.switchFallthrough)
                     return;
                 }
             }
 
             if (node.defaultBody && (!caseMatched || config.switchFallthrough)) {
-                node.defaultBody.forEach(stmt => this.executeStatement(stmt));
+                for (const stmt of node.defaultBody) {
+                    await this.executeStatement(stmt);
+                }
             }
         } catch (e) {
             if (e instanceof BreakSignal) {
@@ -105,14 +122,18 @@ export class Interpreter {
         }
     }
 
-    private executeFor(node: AST.ForNode) {
+    private async executeFor(node: AST.ForNode) {
         if (node.initializer) {
-            this.executeStatement(node.initializer);
+            await this.executeStatement(node.initializer);
         }
+
+        let iter = 0;
 
         while (!node.condition || this.evaluateExpression(node.condition)) {
             try {
-                node.body.forEach(stmt => this.executeStatement(stmt));
+                for (const stmt of node.body) {
+                    await this.executeStatement(stmt);
+                }
             }
             catch (e) {
                 if (e instanceof BreakSignal) {
@@ -122,15 +143,23 @@ export class Interpreter {
                 }
             }
             if (node.update) {
-                this.executeStatement(node.update);
+                await this.executeStatement(node.update);
+            }
+
+            iter++;
+            if (iter % 200 === 0) {
+                await this.yieldToBrowser();
             }
         }
     }
 
-    private executeWhile(node: AST.WhileNode) {
+    private async executeWhile(node: AST.WhileNode) {
+        let iter = 0;
         while (this.evaluateExpression(node.condition)) {
             try {
-                node.body.forEach(stmt => this.executeStatement(stmt));
+                for (const stmt of node.body) {
+                    await this.executeStatement(stmt);
+                }
             } catch (e) {
                 if (e instanceof BreakSignal) {
                     break;
@@ -138,7 +167,16 @@ export class Interpreter {
                     throw e;
                 }
             }
+
+            iter++;
+            if (iter % 200 === 0) {
+                await this.yieldToBrowser();
+            }
         }
+    }
+
+    private async yieldToBrowser() {
+        await new Promise<void>(resolve => setTimeout(resolve, 0));
     }
 
     private evaluateExpression(node: AST.ExpressionNode): any {

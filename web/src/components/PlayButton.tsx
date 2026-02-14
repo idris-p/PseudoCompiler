@@ -1,15 +1,31 @@
 import { FaPlay } from "react-icons/fa";
 import { runPseudoCode } from "../../../core/src/index.js";
+import type { RuntimeIO } from "../../../core/src/interpreter/interpreter.js";
 
-export default function PlayButton( { code, setTerminalOutput }: { code: string, setTerminalOutput: (output: string[]) => void } ) {
+export default function PlayButton( { code, setTerminalOutput }: { code: string, setTerminalOutput: React.Dispatch<React.SetStateAction<string[]>> } ) {
 
-    const handleRun = () => {
+    const handleRun = async () => {
+        setTerminalOutput([]);
+
+        const io: RuntimeIO = {
+            write: (text: string) => {
+                // Stream output line by line
+                setTerminalOutput(prev => [...prev, text]);
+            },
+            read: async (prompt?: string) => {
+                // Prompt user for input
+                return prompt ? window.prompt(prompt) || "" : window.prompt() || "";
+            }
+        };
+        
         try {
-            const result = runPseudoCode(code);
-            setTerminalOutput(result.output);
+            await runPseudoCode(code, io);
         } catch (error) {
             console.error("Error running pseudo code:", error);
-            setTerminalOutput([`${(error as Error).message}`]);
+            setTerminalOutput(prev => [
+                ...prev,
+                (error as Error).message
+            ]);
         }
     }
 

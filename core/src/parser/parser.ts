@@ -210,6 +210,16 @@ export class Parser {
         }
     }
 
+    private getAssignmentTokenType(): TokenType {
+        switch (config.assignmentSyntax) { // "=", "<-", ":="
+            case "=":  return TokenType.EQUALS;
+            case "<-": return TokenType.LEFT_ARROW;
+            case ":=": return TokenType.COLON_EQUALS;
+            default:
+                throw new Error(`Config Error: Unknown assignmentSyntax '${config.assignmentSyntax}'`);
+        }
+    }
+
     private parseStatement(): AST.StatementNode {
         this.skipNewlinesAndSemicolons();
         if (this.match(TokenType.PRINT)) {
@@ -305,8 +315,7 @@ export class Parser {
             };
         }
 
-        // =
-        if (this.match(TokenType.EQUALS)) {
+        if (this.match(this.getAssignmentTokenType())) {
             const value = this.parseExpression();
             return {
                 type: "VariableAssignment",
@@ -315,7 +324,7 @@ export class Parser {
             };
         }
 
-        throw new Error("Expected assignment operator.");
+        throw new Error("Expected '" + config.assignmentSyntax + "' at line " + this.peek().line + ", column " + this.peek().column);
     }
 
     private parsePrintStatement(): AST.PrintNode {
@@ -446,7 +455,7 @@ export class Parser {
         else {
             // Python-style for loop: for i = 0 to 10 { ... }
             const variable = this.consume(TokenType.IDENTIFIER, "Syntax Error: Expected variable name in for loop at line " + this.peek().line + ", column " + this.peek().column).value!;
-            this.consume(TokenType.EQUALS, "Syntax Error: Expected '=' after variable name in for loop at line " + this.peek().line + ", column " + this.peek().column);
+            this.consume(this.getAssignmentTokenType(), "Syntax Error: Expected assignment operator after variable name in for loop at line " + this.peek().line + ", column " + this.peek().column);
 
             let start = this.parseExpression();
             this.consume(TokenType.TO, "Syntax Error: Expected 'to' in for loop after start expression at line " + this.peek().line + ", column " + this.peek().column);
