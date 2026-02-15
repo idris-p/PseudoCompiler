@@ -22,6 +22,8 @@ function getKeywords(): Record<string, TokenType> {
         "endwhile": TokenType.END_WHILE,
         [config.printSyntax]: TokenType.PRINT,
         [config.passSyntax]: TokenType.PASS,
+        "mod": TokenType.MOD,
+        "div": TokenType.DIV,
     }
 }
 
@@ -346,6 +348,8 @@ export class Lexer {
                     return this.makeToken(TokenType.DOUBLE_SLASH, "//")
                 }
                 return this.makeToken(TokenType.SLASH, "/")
+            case "%":
+                return this.makeToken(TokenType.PERCENT, "%")
             case "(":
                 return this.makeToken(TokenType.LEFT_PAREN, "(")
             case ")":

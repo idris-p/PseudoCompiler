@@ -558,7 +558,7 @@ export class Parser {
     private parseEquality(): AST.ExpressionNode {
         let expr = this.parseComparison();
 
-        while (this.match(TokenType.DOUBLE_EQUALS, TokenType.NOT_EQUALS)) {
+        while (this.match(TokenType.DOUBLE_EQUALS, TokenType.EQUALS, TokenType.NOT_EQUALS)) {
             const operator = this.previous().type;
             const right = this.parseComparison();
             expr = {
@@ -606,7 +606,7 @@ export class Parser {
     private parseFactor(): AST.ExpressionNode {
         let expr = this.parseUnary();
 
-        while (this.match(TokenType.STAR, TokenType.SLASH)) {
+        while (this.match(TokenType.STAR, TokenType.SLASH, TokenType.PERCENT, TokenType.DOUBLE_SLASH, TokenType.MOD, TokenType.DIV)) {
             const operator = this.previous().type;
             const right = this.parseUnary();
             expr = {

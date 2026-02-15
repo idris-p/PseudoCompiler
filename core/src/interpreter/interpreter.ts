@@ -228,8 +228,21 @@ export class Interpreter {
                     throw new Error("Math Error: Division by zero");
                 }
                 return left / right;
+            case "PERCENT":
+            case "MOD":
+                if (right === 0) {
+                    throw new Error("Math Error: Modulo by zero");
+                }
+                return left % right;
+            case "DOUBLE_SLASH":
+            case "DIV":
+                if (right === 0) {
+                    throw new Error("Math Error: Division by zero");
+                }
+                return Math.floor(left / right);
 
             case "DOUBLE_EQUALS":
+            case "EQUALS":
                 return left === right;
             case "NOT_EQUALS":
                 return left !== right;

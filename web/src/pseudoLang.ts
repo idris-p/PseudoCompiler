@@ -17,6 +17,8 @@ const STATIC_KEYWORDS = [
     "endfor",
     "while",
     "endwhile",
+    "mod",
+    "div",
 ];
 
 const BOOLEANS = ["true", "false"];
