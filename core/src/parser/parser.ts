@@ -105,28 +105,28 @@ export class Parser {
         this.skipNewlinesAndSemicolons();
 
         if (blockType === BlockType.IF) {
-            if (this.match(TokenType.END_IF)) {
+            if (this.match(TokenType.END_IF, TokenType.END)) {
                 this.consumeStatementTerminator();
                 return;
             }
         }
 
         if (blockType === BlockType.SWITCH) {
-            if (this.match(TokenType.END_SWITCH)) {
+            if (this.match(TokenType.END_SWITCH, TokenType.END)) {
                 this.consumeStatementTerminator();
                 return;
             }
         }
 
         if (blockType === BlockType.FOR) {
-            if (this.match(TokenType.END_FOR)) {
+            if (this.match(TokenType.END_FOR, TokenType.END)) {
                 this.consumeStatementTerminator();
                 return;
             }
         }
 
         if (blockType === BlockType.WHILE) {
-            if (this.match(TokenType.END_WHILE)) {
+            if (this.match(TokenType.END_WHILE, TokenType.END)) {
                 this.consumeStatementTerminator();
                 return;
             }
@@ -635,6 +635,20 @@ export class Parser {
     }
 
     private parsePrimary(): AST.ExpressionNode {
+        if (this.match(TokenType.INPUT)) {
+            this.consume(TokenType.LEFT_PAREN, "Syntax Error: Expected '(' after 'input' at line " + this.peek().line + ", column " + this.peek().column);
+
+            let prompt: AST.ExpressionNode | undefined;
+            if (!this.checkType(TokenType.RIGHT_PAREN)) {
+                prompt = this.parseExpression();
+            }
+            this.consume(TokenType.RIGHT_PAREN, "Syntax Error: Expected ')' after input prompt expression at line " + this.peek().line + ", column " + this.peek().column);
+
+            return {
+                type: "Input",
+                prompt
+            };
+        }
         if (this.match(TokenType.NUMBER)) {
             return {
                 type: "Number",

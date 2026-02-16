@@ -2,6 +2,7 @@ import type Monaco from "monaco-editor";
 import { config } from "../../core/src/loader.js";
 
 const STATIC_KEYWORDS = [
+    "input",
     "if",
     "then",
     "elseif",
@@ -17,6 +18,7 @@ const STATIC_KEYWORDS = [
     "endfor",
     "while",
     "endwhile",
+    "end",
     "mod",
     "div",
 ];

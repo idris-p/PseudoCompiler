@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { Dispatch } from "react";
 import Split from "react-split";
 import CodeEditor from "./CodeEditor";
 import Terminal from "./Terminal";
@@ -9,12 +10,18 @@ export default function Container({
     showConfig,
     code,
     setCode,
-    terminalOutput
+    terminalOutput,
+    setTerminalOutput,
+    pendingInput,
+    setPendingInput
 }: {
     showConfig: boolean,
     code: string,
     setCode: React.Dispatch<React.SetStateAction<string>>,
-    terminalOutput: string[]
+    terminalOutput: string[],
+    setTerminalOutput: React.Dispatch<React.SetStateAction<string[]>>,
+    pendingInput: {prompt?: string; resolve: (value: string) => void;} | null,
+    setPendingInput: Dispatch<any>
 }) {
 
     const getInitialTheme = () =>
@@ -44,7 +51,7 @@ export default function Container({
                         setCode={setCode}
                         setMonacoInstance={setMonacoInstance}
                     />
-                    <Terminal terminalOutput={terminalOutput} />
+                    <Terminal terminalOutput={terminalOutput} setTerminalOutput={setTerminalOutput} pendingInput={pendingInput} setPendingInput={setPendingInput} />
                 </Split>
             }
 

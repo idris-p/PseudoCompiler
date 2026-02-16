@@ -14,6 +14,7 @@ export type StatementNode =
     | BreakNode;
 
 export type ExpressionNode =
+    | InputNode
     | UnaryExpressionNode
     | BinaryExpressionNode
     | NumberNode
@@ -35,6 +36,11 @@ export type VariableAssignmentNode = {
 export type PrintNode = {
     type: "Print";
     expression: ExpressionNode;
+};
+
+export type InputNode = {
+    type: "Input";
+    prompt?: ExpressionNode;
 };
 
 export type IfNode = {

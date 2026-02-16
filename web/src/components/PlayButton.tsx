@@ -2,7 +2,7 @@ import { FaPlay } from "react-icons/fa";
 import { runPseudoCode } from "../../../core/src/index.js";
 import type { RuntimeIO } from "../../../core/src/interpreter/interpreter.js";
 
-export default function PlayButton( { code, setTerminalOutput }: { code: string, setTerminalOutput: React.Dispatch<React.SetStateAction<string[]>> } ) {
+export default function PlayButton( { code, setTerminalOutput, setPendingInput }: { code: string, setTerminalOutput: React.Dispatch<React.SetStateAction<string[]>>; setPendingInput: (pendingInput: {prompt?: string; resolve: (value: string) => void;} | null) => void } ) {
 
     const handleRun = async () => {
         setTerminalOutput([]);
@@ -12,9 +12,11 @@ export default function PlayButton( { code, setTerminalOutput }: { code: string,
                 // Stream output line by line
                 setTerminalOutput(prev => [...prev, text]);
             },
-            read: async (prompt?: string) => {
-                // Prompt user for input
-                return prompt ? window.prompt(prompt) || "" : window.prompt() || "";
+            read: (prompt?: string) => {
+                return new Promise<string>((resolve) => {
+                    // Show input line in terminal
+                    setPendingInput({ prompt, resolve });
+                });
             }
         };
         

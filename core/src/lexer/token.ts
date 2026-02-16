@@ -21,8 +21,11 @@ export enum TokenType {
 
     WHILE = "WHILE",
     END_WHILE = "END_WHILE",
+
+    END = "END",
     
     PRINT = "PRINT",
+    INPUT = "INPUT",
     PASS = "PASS",
     // Identifiers and Literals
     IDENTIFIER = "IDENTIFIER",

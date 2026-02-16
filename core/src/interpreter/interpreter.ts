@@ -34,10 +34,12 @@ export class Interpreter {
     private async executeStatement(node: AST.StatementNode): Promise<void> {
         switch (node.type) {
             case "Program":
-                node.body.forEach(stmt => this.executeStatement(stmt));
+                for (const stmt of node.body) {
+                    await this.executeStatement(stmt);
+                }
                 break;
             case "VariableAssignment":
-                this.executeAssignment(node);
+                await this.executeAssignment(node);
                 break;
             case "Print":
                 await this.executePrint(node);
@@ -64,19 +66,19 @@ export class Interpreter {
         }
     }
 
-    private executeAssignment(node: AST.VariableAssignmentNode) {
-        const value = this.evaluateExpression(node.value);
+    private async executeAssignment(node: AST.VariableAssignmentNode) {
+        const value = await this.evaluateExpression(node.value);
         this.environment.set(node.name, value);
     }
 
     private async executePrint(node: AST.PrintNode) {
-        const value = this.evaluateExpression(node.expression);
+        const value = await this.evaluateExpression(node.expression);
         console.log(value);
         this.io.write(String(value));
     }
 
     private async executeIf(node: AST.IfNode) {
-        const condition = this.evaluateExpression(node.condition);
+        const condition = await this.evaluateExpression(node.condition);
 
         if (condition) {
             for (const stmt of node.thenBody) {
@@ -90,12 +92,12 @@ export class Interpreter {
     }
 
     private async executeSwitch(node: AST.SwitchNode) {
-        const switchValue = this.evaluateExpression(node.expression);
+        const switchValue = await this.evaluateExpression(node.expression);
         let caseMatched = false;
 
         try {
             for (const caseNode of node.cases) {
-                const caseValue = this.evaluateExpression(caseNode.caseExpression);
+                const caseValue = await this.evaluateExpression(caseNode.caseExpression);
 
                 if (switchValue === caseValue || caseMatched) {
                     caseMatched = true;
@@ -129,7 +131,7 @@ export class Interpreter {
 
         let iter = 0;
 
-        while (!node.condition || this.evaluateExpression(node.condition)) {
+        while (!node.condition || await this.evaluateExpression(node.condition)) {
             try {
                 for (const stmt of node.body) {
                     await this.executeStatement(stmt);
@@ -155,7 +157,7 @@ export class Interpreter {
 
     private async executeWhile(node: AST.WhileNode) {
         let iter = 0;
-        while (this.evaluateExpression(node.condition)) {
+        while (await this.evaluateExpression(node.condition)) {
             try {
                 for (const stmt of node.body) {
                     await this.executeStatement(stmt);
@@ -179,8 +181,17 @@ export class Interpreter {
         await new Promise<void>(resolve => setTimeout(resolve, 0));
     }
 
-    private evaluateExpression(node: AST.ExpressionNode): any {
+    private async evaluateExpression(node: AST.ExpressionNode): Promise<any> {
         switch (node.type) {
+            case "Input": {
+                let prompt: string | undefined;
+
+                if (node.prompt) {
+                    prompt = String(await this.evaluateExpression(node.prompt));
+                }
+
+                return await this.io.read(prompt);
+            }
             case "Number":
                 return node.value;
             case "String":
@@ -201,8 +212,8 @@ export class Interpreter {
         }
     }
 
-    private evaluateUnaryExpression(node: AST.UnaryExpressionNode): any {
-        const operand = this.evaluateExpression(node.operand);
+    private async evaluateUnaryExpression(node: AST.UnaryExpressionNode): Promise<any> {
+        const operand = await this.evaluateExpression(node.operand);
 
         switch (node.operator) {
             case "MINUS":
@@ -212,10 +223,9 @@ export class Interpreter {
         }
     };
 
-    private evaluateBinaryExpression(node: AST.BinaryExpressionNode): any {
-        const left = this.evaluateExpression(node.left);
-        const right = this.evaluateExpression(node.right);
-
+    private async evaluateBinaryExpression(node: AST.BinaryExpressionNode): Promise<any> {
+        const left = await this.evaluateExpression(node.left);
+        const right = await this.evaluateExpression(node.right);
         switch (node.operator) {
             case "PLUS":
                 return left + right;
