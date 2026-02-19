@@ -62,7 +62,7 @@ export class Interpreter {
             case "Break":
                 throw new BreakSignal();
             default:
-                throw new Error(`Unknown statement type: ${(node as any).type}`);
+                throw new Error(`Runtime Error: Unknown statement type: ${(node as any).type}`);
         }
     }
 
@@ -200,7 +200,7 @@ export class Interpreter {
                 return node.value;
             case "Identifier":
                 if (!this.environment.has(node.name)) {
-                    throw new Error(`Undefined variable: ${node.name}`);
+                    throw new Error(`Runtime Error: Variable '${node.name}' is not defined`);
                 }
                 return this.environment.get(node.name);
             case "UnaryExpression":
@@ -208,7 +208,7 @@ export class Interpreter {
             case "BinaryExpression":
                 return this.evaluateBinaryExpression(node);
             default:
-                throw new Error(`Unknown expression type: ${(node as any).type}`);
+                throw new Error(`Runtime Error: Unknown expression type: ${(node as any).type}`);
         }
     }
 
@@ -219,7 +219,7 @@ export class Interpreter {
             case "MINUS":
                 return -operand;
             default:
-                throw new Error(`Unknown unary operator: ${node.operator}`);
+                throw new Error(`Runtime Error: Unknown unary operator: ${node.operator}`);
         }
     };
 
@@ -266,7 +266,7 @@ export class Interpreter {
                 return left >= right;
 
             default:
-                throw new Error(`Unknown binary operator: ${node.operator}`);
+                throw new Error(`Runtime Error: Unknown binary operator: ${node.operator}`);
         }
     }
 }
