@@ -20,6 +20,8 @@ export default function PlayButton( { code, setTerminalOutput, setPendingInput }
             }
         };
         
+        setPendingInput(null);
+        setTerminalOutput([]);
         try {
             await runPseudoCode(code, io);
         } catch (error) {

@@ -271,7 +271,28 @@ export class Lexer {
         this.advance() // Skip opening quote
 
         while (!this.isAtEnd() && this.peek() !== quote_mark) {
-            value += this.advance()
+            if (this.peek() === "\\") {
+                this.advance(); // consume '\'
+
+                if (this.isAtEnd()) {
+                    throw new Error(`Syntax Error: Unterminated escape sequence at line ${this.line}, column ${this.column}`);
+                }
+
+                const esc = this.advance(); // the escaped char
+
+                switch (esc) {
+                    case "n":  value += "\n"; break;
+                    case "t":  value += "\t"; break;
+                    case "'":  value += "'";  break;
+                    case "\"": value += "\""; break;
+                    case "\\": value += "\\"; break;
+                    default:
+                        throw new Error(`Syntax Error: Invalid escape sequence '\\${esc}' at line ${this.line}, column ${this.column}`);
+                }
+            }
+            else {
+                value += this.advance();
+            }
         }
 
         if (this.isAtEnd()) {

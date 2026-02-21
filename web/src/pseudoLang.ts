@@ -2,7 +2,6 @@ import type Monaco from "monaco-editor";
 import { config } from "../../core/src/loader.js";
 
 const STATIC_KEYWORDS = [
-    "input",
     "if",
     "then",
     "elseif",
@@ -21,6 +20,10 @@ const STATIC_KEYWORDS = [
     "end",
     "mod",
     "div",
+];
+
+const STATIC_FUNCTIONS = [
+    "input"
 ];
 
 const BOOLEANS = ["true", "false"];
@@ -45,7 +48,7 @@ function escapeRegex(str: string): string {
 
 function setTokenizer(monacoInstance: typeof Monaco) {
     const KEYWORDS = [...STATIC_KEYWORDS, config.breakSyntax, config.passSyntax];
-    const FUNCTIONS = [config.printSyntax];
+    const FUNCTIONS = [...STATIC_FUNCTIONS, config.printSyntax];
 
     monacoInstance.languages.setMonarchTokensProvider("pseudo", {
         ignoreCase: true,
@@ -64,8 +67,9 @@ function setTokenizer(monacoInstance: typeof Monaco) {
                 // Booleans
                 [new RegExp(`\\b(${BOOLEANS.join("|")})\\b`), "constant.boolean"],
 
-                // Strings
-                [/"[^"]*"|'[^']*'/, "string"],
+                // Strings (stateful, supports escapes + highlight them)
+                [/"/, "string.quote", "@string_double"],
+                [/'/, "string.quote", "@string_single"],
 
                 // Numbers
                 [/\d+/, "number"],
@@ -76,6 +80,26 @@ function setTokenizer(monacoInstance: typeof Monaco) {
                 // Operators
                 [/==|!=|<=|>=|<|>/, "operator"],
                 [/[+\-*/]/, "operator"],
+            ],
+            string_double: [
+                // Escape sequences (different colour)
+                [/\\[nt"\\']/, "constant.character.escape"],
+
+                // Anything except backslash or quote
+                [/[^\\"]+/, "string"],
+
+                // Closing quote
+                [/"/, "string.quote", "@pop"],
+
+                // Stray backslash (invalid escape) — still highlight it as escape-ish
+                [/\\/, "invalid"],
+            ],
+
+            string_single: [
+                [/\\[nt"\\']/,"constant.character.escape"],
+                [/[^\\']+/, "string"],
+                [/'/, "string.quote", "@pop"],
+                [/\\/, "invalid"],
             ],
         },
     });
@@ -116,7 +140,7 @@ function registerCompletionProvider(monacoInstance: typeof Monaco) {
     completionDisposable =
         monacoInstance.languages.registerCompletionItemProvider("pseudo", {
             provideCompletionItems: (model, position) => {
-                const FUNCTIONS = [config.printSyntax];
+                const FUNCTIONS = [...STATIC_FUNCTIONS, config.printSyntax];
 
                 const word = model.getWordUntilPosition(position);
                 const code = model.getValue();
@@ -141,6 +165,28 @@ function registerCompletionProvider(monacoInstance: typeof Monaco) {
 
                 const KEYWORDS = [...STATIC_KEYWORDS, config.breakSyntax, config.passSyntax];
 
+                const functionSuggestions = FUNCTIONS.map((fn) => {
+                    // Special-case: input() with cursor inside brackets
+                    if (fn.toLowerCase() === "input") {
+                        return {
+                        label: fn,
+                        kind: monacoInstance.languages.CompletionItemKind.Function,
+                        insertText: "input($0)",
+                        insertTextRules:
+                            monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                        range,
+                        };
+                    }
+
+                    // Normal functions
+                    return {
+                        label: fn,
+                        kind: monacoInstance.languages.CompletionItemKind.Function,
+                        insertText: fn,
+                        range,
+                    };
+                });
+
                 const allSuggestions = [
                     ...KEYWORDS.map((kw) => ({
                         label: kw,
@@ -148,12 +194,7 @@ function registerCompletionProvider(monacoInstance: typeof Monaco) {
                         insertText: kw,
                         range,
                     })),
-                    ...FUNCTIONS.map((fn) => ({
-                        label: fn,
-                        kind: monacoInstance.languages.CompletionItemKind.Function,
-                        insertText: fn,
-                        range,
-                    })),
+                    ...functionSuggestions,
                     ...BOOLEANS.map((bool) => ({
                         label: bool,
                         kind: monacoInstance.languages.CompletionItemKind.Constant,

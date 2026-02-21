@@ -19,6 +19,7 @@ export type ExpressionNode =
     | BinaryExpressionNode
     | NumberNode
     | StringNode
+    | ConcatNode
     | BooleanNode
     | IdentifierNode;
 
@@ -97,6 +98,11 @@ export type NumberNode = {
 export type StringNode = {
     type: "String";
     value: string;
+};
+
+export type ConcatNode = {
+  type: "Concat";
+  parts: ExpressionNode[];
 };
 
 export type BooleanNode = {

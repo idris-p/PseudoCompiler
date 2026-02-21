@@ -552,7 +552,25 @@ export class Parser {
     }
     
     private parseExpression(): AST.ExpressionNode {
-        return this.parseEquality();
+        return this.parseConcat();
+    }
+
+    private parseConcat(): AST.ExpressionNode {
+        let expr = this.parseEquality();
+
+        while (this.match(TokenType.COMMA)) {
+            const right = this.parseEquality();
+            
+            if (expr.type === "Concat") {
+                expr.parts.push(right);
+            } else {
+                expr = {
+                    type: "Concat",
+                    parts: [expr, right]
+                };
+            }
+        }
+        return expr;
     }
 
     private parseEquality(): AST.ExpressionNode {

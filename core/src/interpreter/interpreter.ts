@@ -196,6 +196,10 @@ export class Interpreter {
                 return node.value;
             case "String":
                 return node.value;
+            case "Concat": {
+                const parts = await Promise.all(node.parts.map(async (p) => String(await this.evaluateExpression(p))));
+                return parts.join(" ");
+            }
             case "Boolean":
                 return node.value;
             case "Identifier":
