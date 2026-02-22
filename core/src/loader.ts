@@ -5,6 +5,7 @@ export interface UserConfig {
     codeStyle: CodeStyle;
     commentSyntax: CommentSymbol;
     assignmentSyntax: AssignmentSymbol;
+    inputSyntax: string;
     printSyntax: string;
     breakSyntax: string;
     passSyntax: string;
@@ -16,6 +17,7 @@ const DEFAULT_CONFIG: UserConfig = {
     codeStyle: CodeStyle.INDENT,
     commentSyntax: "#",
     assignmentSyntax: "=",
+    inputSyntax: "input",
     printSyntax: "print",
     breakSyntax: "break",
     passSyntax: "pass",
@@ -47,8 +49,9 @@ function sanitizeString(value: unknown, fallback: string): string {
     return trimmed.length > 0 ? trimmed : fallback;
 }
 
-function sanitizeKeywordFields( parsed: any, defaults: UserConfig): Pick<UserConfig, "printSyntax" | "breakSyntax" | "passSyntax"> {
+function sanitizeKeywordFields( parsed: any, defaults: UserConfig): Pick<UserConfig, "inputSyntax" | "printSyntax" | "breakSyntax" | "passSyntax"> {
     return {
+        inputSyntax: sanitizeString(parsed.inputSyntax, defaults.inputSyntax),
         printSyntax: sanitizeString(parsed.printSyntax, defaults.printSyntax),
         breakSyntax: sanitizeString(parsed.breakSyntax, defaults.breakSyntax),
         passSyntax: sanitizeString(parsed.passSyntax, defaults.passSyntax),

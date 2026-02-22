@@ -22,9 +22,8 @@ const STATIC_KEYWORDS = [
     "div",
 ];
 
-const STATIC_FUNCTIONS = [
-    "input"
-];
+// const STATIC_FUNCTIONS = [
+// ];
 
 const BOOLEANS = ["true", "false"];
 
@@ -48,7 +47,7 @@ function escapeRegex(str: string): string {
 
 function setTokenizer(monacoInstance: typeof Monaco) {
     const KEYWORDS = [...STATIC_KEYWORDS, config.breakSyntax, config.passSyntax];
-    const FUNCTIONS = [...STATIC_FUNCTIONS, config.printSyntax];
+    const FUNCTIONS = [config.inputSyntax, config.printSyntax];
 
     monacoInstance.languages.setMonarchTokensProvider("pseudo", {
         ignoreCase: true,
@@ -140,7 +139,7 @@ function registerCompletionProvider(monacoInstance: typeof Monaco) {
     completionDisposable =
         monacoInstance.languages.registerCompletionItemProvider("pseudo", {
             provideCompletionItems: (model, position) => {
-                const FUNCTIONS = [...STATIC_FUNCTIONS, config.printSyntax];
+                const FUNCTIONS = [config.inputSyntax, config.printSyntax];
 
                 const word = model.getWordUntilPosition(position);
                 const code = model.getValue();
@@ -167,11 +166,11 @@ function registerCompletionProvider(monacoInstance: typeof Monaco) {
 
                 const functionSuggestions = FUNCTIONS.map((fn) => {
                     // Special-case: input() with cursor inside brackets
-                    if (fn.toLowerCase() === "input") {
+                    if (fn.toLowerCase() === config.inputSyntax.toLowerCase()) {
                         return {
                         label: fn,
                         kind: monacoInstance.languages.CompletionItemKind.Function,
-                        insertText: "input($0)",
+                        insertText: `${fn}($0)`,
                         insertTextRules:
                             monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
                         range,

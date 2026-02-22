@@ -22,7 +22,7 @@ function getKeywords(): Record<string, TokenType> {
         "endwhile": TokenType.END_WHILE,
         "end": TokenType.END,
         [config.printSyntax]: TokenType.PRINT,
-        "input": TokenType.INPUT,
+        [config.inputSyntax]: TokenType.INPUT,
         [config.passSyntax]: TokenType.PASS,
         "mod": TokenType.MOD,
         "div": TokenType.DIV,
@@ -126,6 +126,12 @@ export class Lexer {
     // Peak method gets the current character without advancing the position
     private peek(): string {
         return this.sourceCode[this.position]
+    }
+
+    // Peek next method looks ahead one character without advancing the position
+    private peekNext(): string {
+        if (this.position + 1 >= this.sourceCode.length) return "\0";
+        return this.sourceCode[this.position + 1];
     }
 
     // Advance method moves the position forward and returns the new current character
@@ -304,25 +310,77 @@ export class Lexer {
     }
 
     private identifier(): Token {
-        let value = ""
+        const keywords = getKeywords();
 
-        while (!this.isAtEnd() && (this.isAlpha(this.peek()) || this.isDigit(this.peek())) || this.peek() === "." || this.peek() === "-" ) {
-            value += this.advance()
+        let core = "";
+        while (!this.isAtEnd() && (this.isAlpha(this.peek()) || this.isDigit(this.peek()))) {
+            core += this.advance();
         }
 
-        const lower = value.toLowerCase();
+        // Probe ahead for a longer keyword that includes '.' / '-'
+        let bestKeywordType: TokenType | null = null;
+        let bestKeywordText: string | null = null;
+        let bestKeywordEndPos = -1;
+
+        let probePos = this.position;
+        let probeText = core;
+
+        while (probePos < this.sourceCode.length) {
+            const sep = this.sourceCode[probePos];
+            if (sep !== "." && sep !== "-") break;
+
+            const after = this.sourceCode[probePos + 1];
+            if (!after || !(this.isAlpha(after) || this.isDigit(after))) break;
+
+            // Extend probeText with separator
+            probeText += sep;
+            probePos++;
+
+            // Extend with following [a-zA-Z0-9_]+
+            while (probePos < this.sourceCode.length) {
+                const c = this.sourceCode[probePos];
+                if (!(this.isAlpha(c) || this.isDigit(c))) break;
+                probeText += c;
+                probePos++;
+            }
+
+            const lowerProbe = probeText.toLowerCase();
+            const keywordType = keywords[lowerProbe];
+
+            if (keywordType) {
+                bestKeywordType = keywordType;
+                bestKeywordText = probeText;
+                bestKeywordEndPos = probePos;
+            }
+        }
+
+        // If we found an extended keyword, commit it by advancing to bestKeywordEndPos
+        if (bestKeywordType !== null && bestKeywordText !== null) {
+            while (this.position < bestKeywordEndPos) {
+                this.advance();
+            }
+
+            if (this.codeStyle === CodeStyle.INDENT && BLOCK_OPENERS.has(bestKeywordType)) {
+                this.expectedIndent = true;
+            }
+
+            return this.makeToken(bestKeywordType, bestKeywordText);
+        }
+
+        // Otherwise: treat as identifier/normal keyword/bool based on core only
+        const lower = core.toLowerCase();
 
         if (lower === "true" || lower === "false") {
-            return this.makeToken(TokenType.BOOLEAN, lower)
+            return this.makeToken(TokenType.BOOLEAN, lower);
         }
-        const keywords = getKeywords();
-        const type = keywords[lower] || TokenType.IDENTIFIER // Either a keyword or an identifier
+
+        const type = keywords[lower] || TokenType.IDENTIFIER;
 
         if (this.codeStyle === CodeStyle.INDENT && BLOCK_OPENERS.has(type)) {
             this.expectedIndent = true;
         }
 
-        return this.makeToken(type, value)
+        return this.makeToken(type, core);
     }
 
     private operator(): Token {
@@ -381,6 +439,10 @@ export class Lexer {
                 return this.makeToken(TokenType.LEFT_CURLY, "{")
             case "}":
                 return this.makeToken(TokenType.RIGHT_CURLY, "}")
+            case "[":
+                return this.makeToken(TokenType.LEFT_SQUARE, "[")
+            case "]":
+                return this.makeToken(TokenType.RIGHT_SQUARE, "]")
             case ",":
                 return this.makeToken(TokenType.COMMA, ",")
             case ":":

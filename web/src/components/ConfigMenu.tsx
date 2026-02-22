@@ -63,7 +63,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
             </label>
 
             <select
-                className="w-1/2 mb-6 p-2 border border-gray-300 rounded"
+                className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
                 defaultValue={config.codeStyle === CodeStyle.INDENT ? "indent" : "curly braces"}
                 onChange={handleCodeStyleChange}
             >
@@ -76,7 +76,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
             </label>
 
             <select
-                className="w-1/2 mb-6 p-2 border border-gray-300 rounded"
+                className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
                 defaultValue={config.commentSyntax}
                 onChange={handleCommentSymbolChange}
             >
@@ -91,7 +91,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
             </label>
 
             <select
-                className="w-1/2 mb-6 p-2 border border-gray-300 rounded"
+                className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
                 defaultValue={config.assignmentSyntax}
                 onChange={handleAssignmentSymbolChange}
             >
@@ -99,6 +99,23 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 <option value="<-">&lt;-</option>
                 <option value=":=">:=</option>
             </select>
+
+            <h2 className="text-xl font-bold mb-2 mt-4">
+                Input Statement
+            </h2>
+
+            <KeywordField
+                label="Input Keyword"
+                value={config.inputSyntax}
+                placeholder="input"
+                onValidChange={(value) => {
+                    config.inputSyntax = value;
+                    persistConfig();
+                }}
+                onAfterChange={() => {
+                    if (monaco) refreshPseudoLanguage(monaco);
+                }}
+            />
 
             <h2 className="text-xl font-bold mb-2 mt-4">
                 Print Statement

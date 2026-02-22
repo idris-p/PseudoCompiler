@@ -181,6 +181,88 @@ export class Interpreter {
         await new Promise<void>(resolve => setTimeout(resolve, 0));
     }
 
+    private requireInteger(value: any, context: string): number {
+        if (typeof value !== "number" || !Number.isFinite(value) || !Number.isInteger(value)) {
+            throw new Error(`Runtime Error: ${context} must be an integer`);
+        }
+        return value;
+    }
+
+    private sliceSequence<T extends string | any[]>(seq: T, startVal: any, endVal: any, step: number): T {
+        const len = seq.length;
+
+        const toIntOrUndef = (v: any, label: string): number | undefined => {
+            if (v === undefined) return undefined;
+            return this.requireInteger(v, label);
+        };
+
+        let start = toIntOrUndef(startVal, "Slice start");
+        let end = toIntOrUndef(endVal, "Slice end");
+
+        // Defaults depend on step direction (Python-ish)
+        if (step > 0) {
+            if (start === undefined) start = 0;
+            if (end === undefined) end = len;
+        } else {
+            if (start === undefined) start = len - 1;
+            if (end === undefined) end = -1; // IMPORTANT sentinel for reverse slicing
+        }
+
+        if (step > 0) {
+            // Normalize negatives: -1 means last index etc.
+            if (start < 0) start = len + start;
+            if (end < 0) end = len + end;
+
+            // Clamp into [0, len]
+            start = Math.max(0, Math.min(len, start));
+            end = Math.max(0, Math.min(len, end));
+
+            if (typeof seq === "string") {
+                let out = "";
+                for (let i = start; i < end; i += step) out += (seq as string)[i] ?? "";
+                return out as T;
+            } else {
+                const out: any[] = [];
+                for (let i = start; i < end; i += step) {
+                    if (i >= 0 && i < len) out.push((seq as any[])[i]);
+                }
+                return out as T;
+            }
+        } else {
+            // step < 0
+            // Normalize start normally (-1 => last index)
+            if (start < 0) start = len + start;
+
+            // Normalize end EXCEPT keep -1 as sentinel
+            // If end is -1, we want to stop when i > -1 (includes index 0).
+            if (end < -1) end = len + end;
+            // If end === -1, keep it as -1
+            // If end >= 0, keep as-is
+
+            // Clamp start into valid index range [-1, len-1]
+            if (start >= len) start = len - 1;
+            if (start < -1) start = -1;
+
+            // Clamp end into [-1, len-1]
+            if (end >= len) end = len - 1;
+            if (end < -1) end = -1;
+
+            if (typeof seq === "string") {
+                let out = "";
+                for (let i = start; i > end; i += step) {
+                    if (i >= 0 && i < len) out += (seq as string)[i];
+                }
+                return out as T;
+            } else {
+                const out: any[] = [];
+                for (let i = start; i > end; i += step) {
+                    if (i >= 0 && i < len) out.push((seq as any[])[i]);
+                }
+                return out as T;
+            }
+        }
+    }
+
     private async evaluateExpression(node: AST.ExpressionNode): Promise<any> {
         switch (node.type) {
             case "Input": {
@@ -211,6 +293,10 @@ export class Interpreter {
                 return this.evaluateUnaryExpression(node);
             case "BinaryExpression":
                 return this.evaluateBinaryExpression(node);
+            case "IndexExpression":
+                return await this.evaluateIndexExpression(node);
+            case "SliceExpression":
+                return await this.evaluateSliceExpression(node);
             default:
                 throw new Error(`Runtime Error: Unknown expression type: ${(node as any).type}`);
         }
@@ -272,5 +358,57 @@ export class Interpreter {
             default:
                 throw new Error(`Runtime Error: Unknown binary operator: ${node.operator}`);
         }
+    }
+
+    private async evaluateIndexExpression(node: AST.IndexExpressionNode): Promise<any> {
+        const obj = await this.evaluateExpression(node.object);
+        const indexRaw = await this.evaluateExpression(node.index);
+        const index = this.requireInteger(indexRaw, "Index");
+
+        // Strings
+        if (typeof obj === "string") {
+            const i = index < 0 ? obj.length + index : index;
+            if (i < 0 || i >= obj.length) {
+                throw new Error(`Runtime Error: String index out of range`);
+            }
+            return obj[i]; // returns a 1-char string
+        }
+
+        // Arrays
+        // if (Array.isArray(obj)) {
+        //     const i = index < 0 ? obj.length + index : index;
+        //     if (i < 0 || i >= obj.length) {
+        //         throw new Error(`Runtime Error: Array index out of range`);
+        //     }
+        //     return obj[i];
+        // }
+
+        throw new Error(`Runtime Error: Cannot index type '${typeof obj}'`);
+    }
+
+    private async evaluateSliceExpression(node: AST.SliceExpressionNode): Promise<any> {
+        const obj = await this.evaluateExpression(node.object);
+
+        // Evaluate slice parts if present
+        const startVal = node.start ? await this.evaluateExpression(node.start) : undefined;
+        const endVal = node.end ? await this.evaluateExpression(node.end) : undefined;
+        const stepVal = node.step ? await this.evaluateExpression(node.step) : undefined;
+
+        const step = stepVal === undefined ? 1 : this.requireInteger(stepVal, "Slice step");
+        if (step === 0) {
+            throw new Error("Runtime Error: Slice step cannot be 0");
+        }
+
+        // Strings
+        if (typeof obj === "string") {
+            return this.sliceSequence(obj, startVal, endVal, step);
+        }
+
+        // Arrays
+        // if (Array.isArray(obj)) {
+        //     return this.sliceSequence(obj, startVal, endVal, step);
+        // }
+
+        throw new Error(`Runtime Error: Cannot slice type '${typeof obj}'`);
     }
 }

@@ -17,6 +17,8 @@ export type ExpressionNode =
     | InputNode
     | UnaryExpressionNode
     | BinaryExpressionNode
+    | IndexExpressionNode
+    | SliceExpressionNode
     | NumberNode
     | StringNode
     | ConcatNode
@@ -88,6 +90,20 @@ export type BinaryExpressionNode = {
     operator: string;
     left: ExpressionNode;
     right: ExpressionNode;
+};
+
+export type IndexExpressionNode = {
+    type: "IndexExpression";
+    object: ExpressionNode;
+    index: ExpressionNode;
+};
+
+export type SliceExpressionNode = {
+    type: "SliceExpression";
+    object: ExpressionNode;
+    start?: ExpressionNode;
+    end?: ExpressionNode;
+    step?: ExpressionNode;
 };
 
 export type NumberNode = {

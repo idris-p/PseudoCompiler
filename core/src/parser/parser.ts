@@ -649,7 +649,78 @@ export class Parser {
             };
         }
 
-        return this.parsePrimary();
+        return this.parsePostfix();
+    }
+
+    private parsePostfix(): AST.ExpressionNode {
+        let expr = this.parsePrimary();
+
+        while (true) {
+            if (this.match(TokenType.LEFT_SQUARE)) {
+                expr = this.finishBracketAccess(expr);
+                continue;
+            }
+            break;
+        }
+
+        return expr;
+    }
+
+    private finishBracketAccess(object: AST.ExpressionNode): AST.ExpressionNode {
+        let start: AST.ExpressionNode | undefined;
+        let end: AST.ExpressionNode | undefined;
+        let step: AST.ExpressionNode | undefined;
+
+        // If first token isn't ':' or ']', parse a start/index expression
+        if (!this.checkType(TokenType.COLON) && !this.checkType(TokenType.RIGHT_SQUARE)) {
+            start = this.parseExpression();
+        }
+
+        // If we see a colon, it's slicing (not plain indexing)
+        if (this.match(TokenType.COLON)) {
+            // parse end if present (not ':' and not ']')
+            if (!this.checkType(TokenType.COLON) && !this.checkType(TokenType.RIGHT_SQUARE)) {
+                end = this.parseExpression();
+            }
+
+            // optional second colon for step
+            if (this.match(TokenType.COLON)) {
+                if (!this.checkType(TokenType.RIGHT_SQUARE)) {
+                    step = this.parseExpression();
+                }
+            }
+
+            this.consume(
+                TokenType.RIGHT_SQUARE,
+                "Syntax Error: Expected ']' after slice at line " + this.peek().line + ", column " + this.peek().column
+            );
+
+            return {
+                type: "SliceExpression",
+                object,
+                start,
+                end,
+                step
+            };
+        }
+
+        // Otherwise it's indexing: expr[start]
+        this.consume(
+            TokenType.RIGHT_SQUARE,
+            "Syntax Error: Expected ']' after index at line " + this.peek().line + ", column " + this.peek().column
+        );
+
+        if (!start) {
+            throw new Error(
+                "Syntax Error: Expected index expression inside [] at line " + this.peek().line + ", column " + this.peek().column
+            );
+        }
+
+        return {
+            type: "IndexExpression",
+            object,
+            index: start
+        };
     }
 
     private parsePrimary(): AST.ExpressionNode {
