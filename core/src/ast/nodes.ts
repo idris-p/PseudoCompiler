@@ -23,7 +23,8 @@ export type ExpressionNode =
     | StringNode
     | ConcatNode
     | BooleanNode
-    | IdentifierNode;
+    | IdentifierNode
+    | CallExpressionNode;
 
 export type ProgramNode = {
     type: "Program";
@@ -138,3 +139,9 @@ export type PassNode = {
 export type BreakNode = {
     type: "Break";
 };
+
+export type CallExpressionNode = {
+    type: "CallExpression";
+    callee: ExpressionNode;
+    args: ExpressionNode[];
+}

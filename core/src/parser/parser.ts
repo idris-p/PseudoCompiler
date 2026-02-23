@@ -328,6 +328,31 @@ export class Parser {
     }
 
     private parsePrintStatement(): AST.PrintNode {
+        if (this.match(TokenType.LEFT_PAREN)) {
+            const parts: AST.ExpressionNode[] = [];
+
+            // Allow empty: print()
+            if (!this.checkType(TokenType.RIGHT_PAREN)) {
+                do {
+                    parts.push(this.parseExpression());
+                }
+                while (this.match(TokenType.COMMA));
+            }
+
+            this.consume(TokenType.RIGHT_PAREN, "Syntax Error: Expected ')' after print arguments at line " + this.peek().line + ", column " + this.peek().column);
+
+            this.consumeStatementTerminator();
+
+            const expression = parts.length === 0 ? { type: "String", value: "" } as AST.ExpressionNode
+                                : parts.length === 1 ? parts[0]
+                                : ({ type: "Concat", parts } as AST.ExpressionNode);
+
+            return { 
+                type: "Print",
+                expression
+            };
+        }
+
         const expression = this.parseExpression();
         this.consumeStatementTerminator();
 
@@ -552,7 +577,7 @@ export class Parser {
     }
     
     private parseExpression(): AST.ExpressionNode {
-        return this.parseConcat();
+        return this.parseEquality();
     }
 
     private parseConcat(): AST.ExpressionNode {
@@ -660,6 +685,27 @@ export class Parser {
                 expr = this.finishBracketAccess(expr);
                 continue;
             }
+
+            if (this.match(TokenType.LEFT_PAREN)) {
+                const args: AST.ExpressionNode[] = [];
+
+                if (!this.checkType(TokenType.RIGHT_PAREN)) {
+                    do {
+                        args.push(this.parseExpression());
+                    }
+                    while (this.match(TokenType.COMMA));
+                }
+
+                this.consume(TokenType.RIGHT_PAREN, "Syntax Error: Expected ')' after function call arguments at line " + this.peek().line + ", column " + this.peek().column);
+
+                expr = {
+                    type: "CallExpression",
+                    callee: expr,
+                    args
+                };
+                continue;
+            }
+            
             break;
         }
 

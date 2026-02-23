@@ -297,6 +297,8 @@ export class Interpreter {
                 return await this.evaluateIndexExpression(node);
             case "SliceExpression":
                 return await this.evaluateSliceExpression(node);
+            case "CallExpression":
+                return await this.evaluateCallExpression(node);
             default:
                 throw new Error(`Runtime Error: Unknown expression type: ${(node as any).type}`);
         }
@@ -410,5 +412,42 @@ export class Interpreter {
         // }
 
         throw new Error(`Runtime Error: Cannot slice type '${typeof obj}'`);
+    }
+
+    private async evaluateCallExpression(node: AST.CallExpressionNode): Promise<any> {
+        if (node.callee.type !== "Identifier") {
+            throw new Error(`Runtime Error: Invalid function call`);
+        }
+
+        const funcName = node.callee.name;
+
+        // Built-in functions
+        if (funcName === "len") {
+            if (node.args.length !== 1) {
+                throw new Error(`Runtime Error: len() takes exactly 1 argument but ${node.args.length} were given`);
+            }
+
+            const str = await this.evaluateExpression(node.args[0]);
+
+            if (typeof str !== "string") {
+                throw new Error(`Runtime Error: len() argument must be a string, not a '${typeof str}'`);
+            }
+            return str.length;
+        }
+        else if (funcName === "substring") {
+            if (node.args.length !== 3) {
+                throw new Error(`Runtime Error: substring() takes exactly 3 arguments but ${node.args.length} were given`);
+            }
+
+            const str = await this.evaluateExpression(node.args[0]);
+            const start = await this.evaluateExpression(node.args[1]);
+            const end = await this.evaluateExpression(node.args[2]);
+
+            if (typeof str !== "string") {
+                throw new Error(`Runtime Error: substring() first argument must be a string, not a '${typeof str}'`);
+            }
+
+            return this.sliceSequence(str, start, end, 1);
+        }
     }
 }
