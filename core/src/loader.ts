@@ -9,6 +9,8 @@ export interface UserConfig {
     printSyntax: string;
     breakSyntax: string;
     passSyntax: string;
+    lengthSyntax: string;
+    substringSyntax: string;
     forInclusive: boolean[];
     switchFallthrough: boolean;
 };
@@ -21,6 +23,8 @@ const DEFAULT_CONFIG: UserConfig = {
     printSyntax: "print",
     breakSyntax: "break",
     passSyntax: "pass",
+    lengthSyntax: "len",
+    substringSyntax: "substring",
     forInclusive: [true, false],
     switchFallthrough: false,
 };
@@ -49,12 +53,14 @@ function sanitizeString(value: unknown, fallback: string): string {
     return trimmed.length > 0 ? trimmed : fallback;
 }
 
-function sanitizeKeywordFields( parsed: any, defaults: UserConfig): Pick<UserConfig, "inputSyntax" | "printSyntax" | "breakSyntax" | "passSyntax"> {
+function sanitizeKeywordFields( parsed: any, defaults: UserConfig): Pick<UserConfig, "inputSyntax" | "printSyntax" | "breakSyntax" | "passSyntax" | "lengthSyntax" | "substringSyntax"> {
     return {
         inputSyntax: sanitizeString(parsed.inputSyntax, defaults.inputSyntax),
         printSyntax: sanitizeString(parsed.printSyntax, defaults.printSyntax),
         breakSyntax: sanitizeString(parsed.breakSyntax, defaults.breakSyntax),
         passSyntax: sanitizeString(parsed.passSyntax, defaults.passSyntax),
+        lengthSyntax: sanitizeString(parsed.lengthSyntax, defaults.lengthSyntax),
+        substringSyntax: sanitizeString(parsed.substringSyntax, defaults.substringSyntax),
     };
 }
 

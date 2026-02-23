@@ -209,6 +209,40 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                     if (monaco) refreshPseudoLanguage(monaco);
                 }}
             />
+
+            <h2 className="text-xl font-bold mb-2 mt-4">
+                String Operations
+            </h2>
+
+            <KeywordField
+                label="Length Keyword"
+                value={config.lengthSyntax}
+                placeholder="len"
+                onValidChange={(value) => {
+                    config.lengthSyntax = value;
+                    persistConfig();
+                }}
+                onAfterChange={() => {
+                    if (monaco) refreshPseudoLanguage(monaco);
+                }}
+            />
+
+            <h2 className="text-xl font-bold mb-2 mt-4">
+                Substring Keyword
+            </h2>
+
+            <KeywordField
+                label="Substring Keyword"
+                value={config.substringSyntax}
+                placeholder="substring"
+                onValidChange={(value) => {
+                    config.substringSyntax = value;
+                    persistConfig();
+                }}
+                onAfterChange={() => {
+                    if (monaco) refreshPseudoLanguage(monaco);
+                }}
+            />
         </div>
     );
 }

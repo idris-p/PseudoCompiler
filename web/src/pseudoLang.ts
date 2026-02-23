@@ -22,10 +22,8 @@ const STATIC_KEYWORDS = [
     "div",
 ];
 
-const STATIC_FUNCTIONS = [
-    "len",
-    "substring"
-];
+// const STATIC_FUNCTIONS = [
+// ];
 
 const BOOLEANS = ["true", "false"];
 
@@ -49,7 +47,7 @@ function escapeRegex(str: string): string {
 
 function setTokenizer(monacoInstance: typeof Monaco) {
     const KEYWORDS = [...STATIC_KEYWORDS, config.breakSyntax, config.passSyntax];
-    const FUNCTIONS = [...STATIC_FUNCTIONS, config.inputSyntax, config.printSyntax];
+    const FUNCTIONS = [config.inputSyntax, config.printSyntax, config.lengthSyntax, config.substringSyntax];
 
     monacoInstance.languages.setMonarchTokensProvider("pseudo", {
         ignoreCase: true,
@@ -141,7 +139,7 @@ function registerCompletionProvider(monacoInstance: typeof Monaco) {
     completionDisposable =
         monacoInstance.languages.registerCompletionItemProvider("pseudo", {
             provideCompletionItems: (model, position) => {
-                const FUNCTIONS = [...STATIC_FUNCTIONS, config.inputSyntax, config.printSyntax];
+                const FUNCTIONS = [config.inputSyntax, config.printSyntax, config.lengthSyntax, config.substringSyntax];
 
                 const word = model.getWordUntilPosition(position);
                 const code = model.getValue();
@@ -168,7 +166,7 @@ function registerCompletionProvider(monacoInstance: typeof Monaco) {
 
                 const functionSuggestions = FUNCTIONS.map((fn) => {
                     // Special-case: input() with cursor inside brackets
-                    if (fn.toLowerCase() === config.inputSyntax.toLowerCase() || STATIC_FUNCTIONS.includes(fn)) {
+                    if (fn.toLowerCase() === config.inputSyntax.toLowerCase() || FUNCTIONS.includes(fn)) {
                         return {
                         label: fn,
                         kind: monacoInstance.languages.CompletionItemKind.Function,

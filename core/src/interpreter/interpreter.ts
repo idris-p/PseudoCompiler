@@ -422,21 +422,21 @@ export class Interpreter {
         const funcName = node.callee.name;
 
         // Built-in functions
-        if (funcName === "len") {
+        if (funcName === config.lengthSyntax) {
             if (node.args.length !== 1) {
-                throw new Error(`Runtime Error: len() takes exactly 1 argument but ${node.args.length} were given`);
+                throw new Error(`Runtime Error: ${config.lengthSyntax}() takes exactly 1 argument but ${node.args.length} were given`);
             }
 
             const str = await this.evaluateExpression(node.args[0]);
 
             if (typeof str !== "string") {
-                throw new Error(`Runtime Error: len() argument must be a string, not a '${typeof str}'`);
+                throw new Error(`Runtime Error: ${config.lengthSyntax}() argument must be a string, not a '${typeof str}'`);
             }
             return str.length;
         }
-        else if (funcName === "substring") {
+        else if (funcName === config.substringSyntax) {
             if (node.args.length !== 3) {
-                throw new Error(`Runtime Error: substring() takes exactly 3 arguments but ${node.args.length} were given`);
+                throw new Error(`Runtime Error: ${config.substringSyntax}() takes exactly 3 arguments but ${node.args.length} were given`);
             }
 
             const str = await this.evaluateExpression(node.args[0]);
@@ -444,10 +444,13 @@ export class Interpreter {
             const end = await this.evaluateExpression(node.args[2]);
 
             if (typeof str !== "string") {
-                throw new Error(`Runtime Error: substring() first argument must be a string, not a '${typeof str}'`);
+                throw new Error(`Runtime Error: ${config.substringSyntax}() first argument must be a string, not a '${typeof str}'`);
             }
 
             return this.sliceSequence(str, start, end, 1);
+        }
+        else {
+            throw new Error(`Runtime Error: Unknown function '${funcName}'`);
         }
     }
 }
