@@ -44,6 +44,9 @@ export class Interpreter {
             case "Print":
                 await this.executePrint(node);
                 break;
+            case "InputStatement":
+                await this.evaluateExpression(node.input);
+                break;
             case "If":
                 await this.executeIf(node);
                 break;

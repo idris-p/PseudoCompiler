@@ -443,6 +443,8 @@ export class Lexer {
                 return this.makeToken(TokenType.LEFT_SQUARE, "[")
             case "]":
                 return this.makeToken(TokenType.RIGHT_SQUARE, "]")
+            case ".":
+                return this.makeToken(TokenType.DOT, ".")
             case ",":
                 return this.makeToken(TokenType.COMMA, ",")
             case ":":

@@ -65,6 +65,7 @@ export enum TokenType {
     RIGHT_CURLY = "RIGHT_CURLY",
     LEFT_SQUARE = "LEFT_SQUARE",
     RIGHT_SQUARE = "RIGHT_SQUARE",
+    DOT = "DOT",
     COMMA = "COMMA",
     COLON = "COLON",
     SEMI_COLON = "SEMI_COLON",

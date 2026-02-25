@@ -225,6 +225,9 @@ export class Parser {
         if (this.match(TokenType.PRINT)) {
             return this.parsePrintStatement();
         }
+        if (this.match(TokenType.INPUT)) {
+            return this.parseInputStatement();
+        }
         if (this.match(TokenType.IF)) {
             return this.parseIfStatement();
         }
@@ -359,6 +362,24 @@ export class Parser {
         return {
             type: "Print",
             expression
+        };
+    }
+
+    private parseInputStatement(): AST.StatementNode {
+        this.consume(TokenType.LEFT_PAREN, "Syntax Error: Expected '(' after 'input' at line " + this.peek().line);
+
+        let prompt: AST.ExpressionNode | undefined;
+        if (!this.checkType(TokenType.RIGHT_PAREN)) {
+            prompt = this.parseExpression();
+        }
+
+        this.consume(TokenType.RIGHT_PAREN, "Syntax Error: Expected ')' after input(...) at line " + this.peek().line);
+
+        this.consumeStatementTerminator();
+
+        return {
+            type: "InputStatement",
+            input: { type: "Input", prompt }
         };
     }
 

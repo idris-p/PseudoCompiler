@@ -6,6 +6,7 @@ export type StatementNode =
     | ProgramNode
     | VariableAssignmentNode
     | PrintNode
+    | InputStatementNode
     | IfNode
     | SwitchNode
     | ForNode
@@ -45,6 +46,11 @@ export type PrintNode = {
 export type InputNode = {
     type: "Input";
     prompt?: ExpressionNode;
+};
+
+export type InputStatementNode = {
+    type: "InputStatement";
+    input: InputNode;
 };
 
 export type IfNode = {
