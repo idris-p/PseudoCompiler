@@ -227,10 +227,6 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 }}
             />
 
-            <h2 className="text-xl font-bold mb-2 mt-4">
-                Substring Keyword
-            </h2>
-
             <KeywordField
                 label="Substring Keyword"
                 value={config.substringSyntax}

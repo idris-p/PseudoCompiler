@@ -22,8 +22,30 @@ const STATIC_KEYWORDS = [
     "div",
 ];
 
-// const STATIC_FUNCTIONS = [
-// ];
+const STATIC_FUNCTIONS = [
+    "pow",
+    "sqrt",
+    "max",
+    "min",
+    "floor",
+    "ceil",
+    "round",
+    "sin",
+    "cos",
+    "tan",
+    "sec",
+    "cosec",
+    "cot",
+    "sinh",
+    "cosh",
+    "tanh",
+    "exp",
+    "ln",
+    "log",
+    "abs"
+];
+
+const CONSTANTS = ["pi"];
 
 const BOOLEANS = ["true", "false"];
 
@@ -47,7 +69,7 @@ function escapeRegex(str: string): string {
 
 function setTokenizer(monacoInstance: typeof Monaco) {
     const KEYWORDS = [...STATIC_KEYWORDS, config.breakSyntax, config.passSyntax];
-    const FUNCTIONS = [config.inputSyntax, config.printSyntax, config.lengthSyntax, config.substringSyntax];
+    const FUNCTIONS = [...STATIC_FUNCTIONS, config.inputSyntax, config.printSyntax, config.lengthSyntax, config.substringSyntax];
 
     monacoInstance.languages.setMonarchTokensProvider("pseudo", {
         ignoreCase: true,
@@ -72,6 +94,9 @@ function setTokenizer(monacoInstance: typeof Monaco) {
 
                 // Numbers
                 [/\d+/, "number"],
+
+                // Constants
+                [new RegExp(`\\b(${CONSTANTS.join("|")})\\b`), "number"],
 
                 // Identifiers
                 [/[a-zA-Z_]\w*/, "identifier"],
@@ -139,7 +164,7 @@ function registerCompletionProvider(monacoInstance: typeof Monaco) {
     completionDisposable =
         monacoInstance.languages.registerCompletionItemProvider("pseudo", {
             provideCompletionItems: (model, position) => {
-                const FUNCTIONS = [config.inputSyntax, config.printSyntax, config.lengthSyntax, config.substringSyntax];
+                const FUNCTIONS = [...STATIC_FUNCTIONS, config.inputSyntax, config.printSyntax, config.lengthSyntax, config.substringSyntax];
 
                 const word = model.getWordUntilPosition(position);
                 const code = model.getValue();
@@ -200,6 +225,12 @@ function registerCompletionProvider(monacoInstance: typeof Monaco) {
                         insertText: bool,
                         range,
                     })),
+                    ...CONSTANTS.map((constant) => ({
+                        label: constant,
+                        kind: monacoInstance.languages.CompletionItemKind.Constant,
+                        insertText: constant,
+                        range,
+                    })),
                     ...variables.map((v) => ({
                         label: v,
                         kind: monacoInstance.languages.CompletionItemKind.Variable,
@@ -208,7 +239,7 @@ function registerCompletionProvider(monacoInstance: typeof Monaco) {
                     })),
                 ];
 
-                // 🔥 Deduplicate by label
+                // Deduplicate by label
                 const unique = Array.from(
                     new Map(allSuggestions.map(s => [s.label, s])).values()
                 );

@@ -413,10 +413,18 @@ export class Lexer {
                     return this.makeToken(TokenType.DOUBLE_MINUS, "--")
                 }
                 return this.makeToken(TokenType.MINUS, "-")
+            case "×":
+                return this.makeToken(TokenType.TIMES, "×")
+            case "÷":
+                return this.makeToken(TokenType.DIVIDE, "÷")
             case "*":
                 if (this.peek() === "=") {
                     this.advance()
                     return this.makeToken(TokenType.STAR_EQUALS, "*=")
+                }
+                if (this.peek() === "*") {
+                    this.advance()
+                    return this.makeToken(TokenType.DOUBLE_STAR, "**")
                 }
                 return this.makeToken(TokenType.STAR, "*")
             case "/":
@@ -431,6 +439,8 @@ export class Lexer {
                 return this.makeToken(TokenType.SLASH, "/")
             case "%":
                 return this.makeToken(TokenType.PERCENT, "%")
+            case "^":
+                return this.makeToken(TokenType.CARET, "^")
             case "(":
                 return this.makeToken(TokenType.LEFT_PAREN, "(")
             case ")":

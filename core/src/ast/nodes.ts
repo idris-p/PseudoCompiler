@@ -25,7 +25,8 @@ export type ExpressionNode =
     | ConcatNode
     | BooleanNode
     | IdentifierNode
-    | CallExpressionNode;
+    | CallExpressionNode
+    | MemberExpressionNode;
 
 export type ProgramNode = {
     type: "Program";
@@ -150,4 +151,10 @@ export type CallExpressionNode = {
     type: "CallExpression";
     callee: ExpressionNode;
     args: ExpressionNode[];
+}
+
+export type MemberExpressionNode = {
+    type: "MemberExpression";
+    object: ExpressionNode;
+    property: string;
 }

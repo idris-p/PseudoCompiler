@@ -70,6 +70,10 @@ export class Interpreter {
     }
 
     private async executeAssignment(node: AST.VariableAssignmentNode) {
+        if (node.name.toLowerCase() === "pi") {
+            throw new Error("Runtime Error: Cannot assign to constant 'pi'");
+        }
+        
         const value = await this.evaluateExpression(node.value);
         this.environment.set(node.name, value);
     }
@@ -288,6 +292,9 @@ export class Interpreter {
             case "Boolean":
                 return node.value;
             case "Identifier":
+                if (node.name.toLowerCase() === "pi") {
+                    return Math.PI;
+                }
                 if (!this.environment.has(node.name)) {
                     throw new Error(`Runtime Error: Variable '${node.name}' is not defined`);
                 }
@@ -302,6 +309,8 @@ export class Interpreter {
                 return await this.evaluateSliceExpression(node);
             case "CallExpression":
                 return await this.evaluateCallExpression(node);
+            case "MemberExpression":
+                return await this.evaluateMemberExpression(node);
             default:
                 throw new Error(`Runtime Error: Unknown expression type: ${(node as any).type}`);
         }
@@ -326,8 +335,10 @@ export class Interpreter {
                 return left + right;
             case "MINUS":
                 return left - right;
+            case "TIMES":
             case "STAR":
                 return left * right;
+            case "DIVIDE":
             case "SLASH":
                 if (right === 0) {
                     throw new Error("Math Error: Division by zero");
@@ -339,6 +350,9 @@ export class Interpreter {
                     throw new Error("Math Error: Modulo by zero");
                 }
                 return left % right;
+            case "CARET":
+            case "DOUBLE_STAR":
+                return left ** right;
             case "DOUBLE_SLASH":
             case "DIV":
                 if (right === 0) {
@@ -417,43 +431,273 @@ export class Interpreter {
         throw new Error(`Runtime Error: Cannot slice type '${typeof obj}'`);
     }
 
+    // Built-in functions that can be called in global form (e.g. substring(str,2,5)) or method form (e.g. str.substring(2,5))
+    private async callBuiltin(nameLower: string, receiver: any | undefined, args: AST.ExpressionNode[]): Promise<any> {
+        // Evaluate arguments given
+        const evaledArgs = await Promise.all(args.map(a => this.evaluateExpression(a)));
+
+        type BuiltinSpec = {
+            params: number[];                 // global form parameter count
+            allowMember: boolean;                // whether obj.f(...) form is allowed
+            displayName: () => string;           // for error messages (uses current config)
+            fn: (finalArgs: any[]) => any;       // receives normalized args
+        };
+
+        const num = (v: any, label: string): number => {
+            if (typeof v !== "number" || !Number.isFinite(v)) {
+                throw new Error(`Runtime Error: ${label} must be a finite number`);
+            }
+            return v;
+        };
+
+        // totalParams = how many parameters global form takes
+        const builtins: Record<string, BuiltinSpec> = {
+            [config.lengthSyntax.toLowerCase()]: {
+            params: [1],
+            allowMember: true,
+            displayName: () => config.lengthSyntax,
+            fn: (finalArgs: any[]) => {
+                const str = finalArgs[0];
+                if (typeof str !== "string") {
+                    throw new Error(`Runtime Error: ${config.lengthSyntax}() argument must be a string, not a '${typeof str}'`);
+                }
+                return str.length;
+            },
+            },
+
+            [config.substringSyntax.toLowerCase()]: {
+            params: [3],
+            allowMember: true,
+            displayName: () => config.substringSyntax,
+            fn: (finalArgs: any[]) => {
+                const [str, start, end] = finalArgs;
+
+                if (typeof str !== "string") {
+                    throw new Error(`Runtime Error: ${config.substringSyntax}() first argument must be a string, not a '${typeof str}'`);
+                }
+                return this.sliceSequence(str, start, end, 1);
+            },
+            },
+
+            // Maths Builtins
+            ["pow"]: {
+                params: [2],
+                allowMember: false,
+                displayName: () => "pow",
+                fn: (a) => Math.pow(num(a[0], "pow(a)"), num(a[1], "pow(b)"))
+            },
+            ["sqrt"]: {
+                params: [1],
+                allowMember: false,
+                displayName: () => "sqrt",
+                fn: (a) => {
+                    const val = num(a[0], "sqrt()");
+                    if (val < 0) {
+                        throw new Error("Math Error: sqrt() argument must be non-negative");
+                    }
+                    return Math.sqrt(val);
+                }
+            },
+            ["max"]: {
+                params: [2],
+                allowMember: false,
+                displayName: () => "max",
+                fn: (a) => Math.max(num(a[0], "max(a)"), num(a[1], "max(b)"))
+            },
+            ["min"]: {
+                params: [2],
+                allowMember: false,
+                displayName: () => "min",
+                fn: (a) => Math.min(num(a[0], "min(a)"), num(a[1], "min(b)"))
+            },
+            ["floor"]: {
+                params: [1],
+                allowMember: false,
+                displayName: () => "floor",
+                fn: (a) => Math.floor(num(a[0], "floor()"))
+            },
+            ["ceil"]: {
+                params: [1],
+                allowMember: false,
+                displayName: () => "ceil",
+                fn: (a) => Math.ceil(num(a[0], "ceil()"))
+            },
+            ["round"]: {
+                params: [1, 2], // To be made optional between 1 or 2 params based on config
+                allowMember: false,
+                displayName: () => "round",
+                fn: (a) => {
+                    const value = num(a[0], "round(value)");
+
+                    // round(value) -> nearest whole number
+                    if (a.length === 1) return Math.round(value);
+
+                    // round(value, precision)
+                    const precision = num(a[1], "round(precision)");
+                    // optional: require integer precision
+                    if (!Number.isInteger(precision)) {
+                    throw new Error("Math Error: round() precision argument must be an integer");
+                    }
+
+                    const factor = Math.pow(10, precision);
+                    return Math.round(value * factor) / factor;
+                },
+            },
+            ["sin"]: {
+                params: [1],
+                allowMember: false,
+                displayName: () => "sin",
+                fn: (a) => Math.sin(num(a[0], "sin()"))
+            },
+            ["cos"]: {
+                params: [1],
+                allowMember: false,
+                displayName: () => "cos",
+                fn: (a) => Math.cos(num(a[0], "cos()"))
+            },
+            ["tan"]: {
+                params: [1],
+                allowMember: false,
+                displayName: () => "tan",
+                fn: (a) => Math.tan(num(a[0], "tan()"))
+            },
+            ["sec"]: {
+                params: [1],
+                allowMember: false,
+                displayName: () => "sec",
+                fn: (a) => 1 / Math.cos(num(a[0], "sec()"))
+            },
+            ["cosec"]: {
+                params: [1],
+                allowMember: false,
+                displayName: () => "cosec",
+                fn: (a) => 1 / Math.sin(num(a[0], "cosec()"))
+            },
+            ["cot"]: {
+                params: [1],
+                allowMember: false,
+                displayName: () => "cot",
+                fn: (a) => 1 / Math.tan(num(a[0], "cot()"))
+            },
+            ["sinh"]: {
+                params: [1],
+                allowMember: false,
+                displayName: () => "sinh",
+                fn: (a) => Math.sinh(num(a[0], "sinh()"))
+            },
+            ["cosh"]: {
+                params: [1],
+                allowMember: false,
+                displayName: () => "cosh",
+                fn: (a) => Math.cosh(num(a[0], "cosh()"))
+            },
+            ["tanh"]: {
+                params: [1],
+                allowMember: false,
+                displayName: () => "tanh",
+                fn: (a) => Math.tanh(num(a[0], "tanh()"))
+            },
+            ["exp"]: {
+                params: [1],
+                allowMember: false,
+                displayName: () => "exp",
+                fn: (a) => Math.exp(num(a[0], "exp()"))
+            },
+            ["ln"]: {
+                params: [1],
+                allowMember: false,
+                displayName: () => "ln",
+                fn: (a) => {
+                    const val = num(a[0], "ln()");
+                    if (val <= 0) {
+                        throw new Error("Math Error: ln() argument must be positive");
+                    }
+                    return Math.log(val);
+                }
+            },
+            ["log"]: {
+                params: [1, 2], // To be made optional between 1 or 2 params based on config
+                allowMember: false,
+                displayName: () => "log",
+                fn: (a) => {
+                    const val = num(a[0], "log(value)");
+                    if (val <= 0) {
+                    throw new Error("Math Error: log() value argument must be positive");
+                    }
+
+                    // log(value) -> base 10
+                    if (a.length === 1) {
+                    // Prefer Math.log10 if available; fallback keeps it safe
+                    return (Math as any).log10 ? (Math as any).log10(val) : Math.log(val) / Math.log(10);
+                    }
+
+                    // log(value, base)
+                    const base = num(a[1], "log(base)");
+                    if (base <= 0 || base === 1) {
+                    throw new Error("Math Error: log() base argument must be positive and not equal to 1");
+                    }
+
+                    return Math.log(val) / Math.log(base);
+                }
+            },
+            ["abs"]: {
+                params: [1],
+                allowMember: false,
+                displayName: () => "abs",
+                fn: (a) => Math.abs(num(a[0], "abs()"))
+            }
+        };
+
+        const builtin = builtins[nameLower];
+        if (!builtin) {
+            throw new Error(`Runtime Error: Unknown function '${nameLower}'`);
+        }
+
+        const expectedUserArgs = receiver === undefined 
+            ? builtin.params[0] 
+            : builtin.params[0] - 1;
+
+        if (!builtin.params.includes(args.length + (receiver === undefined ? 0 : 1))) {
+            const paramList = builtin.params.map(p => receiver === undefined ? p : p - 1).join(" or ");
+            throw new Error(`Runtime Error: ${nameLower}() takes ${paramList} argument(s) but ${args.length} were given`);
+        }
+
+        // Build the internal arg list used by builtin implementations
+        const finalArgs = receiver === undefined ? evaledArgs : [receiver, ...evaledArgs];
+
+        return builtin.fn(finalArgs);
+    }
+
     private async evaluateCallExpression(node: AST.CallExpressionNode): Promise<any> {
-        if (node.callee.type !== "Identifier") {
-            throw new Error(`Runtime Error: Invalid function call`);
+        // Global call: substring(str,2,5)
+        if (node.callee.type === "Identifier") {
+            const funcName = node.callee.name.toLowerCase();
+            return await this.callBuiltin(funcName, undefined, node.args);
         }
 
-        const funcName = node.callee.name;
-
-        // Built-in functions
-        if (funcName === config.lengthSyntax) {
-            if (node.args.length !== 1) {
-                throw new Error(`Runtime Error: ${config.lengthSyntax}() takes exactly 1 argument but ${node.args.length} were given`);
-            }
-
-            const str = await this.evaluateExpression(node.args[0]);
-
-            if (typeof str !== "string") {
-                throw new Error(`Runtime Error: ${config.lengthSyntax}() argument must be a string, not a '${typeof str}'`);
-            }
-            return str.length;
+        // Method call: str.substring(2,5)
+        if (node.callee.type === "MemberExpression") {
+            const receiver = await this.evaluateExpression(node.callee.object);
+            const methodName = node.callee.property.toLowerCase();
+            return await this.callBuiltin(methodName, receiver, node.args);
         }
-        else if (funcName === config.substringSyntax) {
-            if (node.args.length !== 3) {
-                throw new Error(`Runtime Error: ${config.substringSyntax}() takes exactly 3 arguments but ${node.args.length} were given`);
+
+        throw new Error(`Runtime Error: Invalid function call`);
+    }
+
+    private async evaluateMemberExpression(node: AST.MemberExpressionNode): Promise<any> {
+        const obj = await this.evaluateExpression(node.object);
+        const prop = node.property.toLowerCase();
+
+        if (prop === config.lengthSyntax.toLowerCase()) {
+            if (typeof obj !== "string") {
+                throw new Error(`Runtime Error: ${config.lengthSyntax} works on strings only`);
             }
-
-            const str = await this.evaluateExpression(node.args[0]);
-            const start = await this.evaluateExpression(node.args[1]);
-            const end = await this.evaluateExpression(node.args[2]);
-
-            if (typeof str !== "string") {
-                throw new Error(`Runtime Error: ${config.substringSyntax}() first argument must be a string, not a '${typeof str}'`);
-            }
-
-            return this.sliceSequence(str, start, end, 1);
+            return obj.length;
         }
-        else {
-            throw new Error(`Runtime Error: Unknown function '${funcName}'`);
-        }
+
+        // If you later add more unary builtins, put them here.
+
+        throw new Error(`Runtime Error: Unknown property '${node.property}'`);
     }
 }

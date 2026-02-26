@@ -457,7 +457,6 @@ export class Parser {
     }
 
     private parseForStatement(): AST.ForNode {
-
         if (this.match(TokenType.LEFT_PAREN)) {
             // C-style for loop: for (initializer; condition; update) { ... }
             let initializer: AST.StatementNode | undefined;
@@ -524,6 +523,13 @@ export class Parser {
                 };
             }
 
+            // Optional step syntax: for i = 0 to 10 step 2
+            let step: AST.ExpressionNode = { type: "Number", value: 1 };
+
+            if (this.match(TokenType.STEP)) {
+                step = this.parseExpression();
+            }
+
             const initializer: AST.StatementNode = {
                 type: "VariableAssignment",
                 name: variable,
@@ -532,7 +538,7 @@ export class Parser {
 
             const condition: AST.ExpressionNode = {
                 type: "BinaryExpression",
-                operator: TokenType.LESS, // Can change to LESS_EQUAL if you want inclusive range
+                operator: TokenType.LESS,
                 left: {
                     type: "Identifier",
                     name: variable
@@ -550,10 +556,7 @@ export class Parser {
                         type: "Identifier",
                         name: variable
                     },
-                    right: {
-                        type: "Number",
-                        value: 1
-                    }
+                    right: step
                 }
             };
 
@@ -668,11 +671,27 @@ export class Parser {
     }
 
     private parseFactor(): AST.ExpressionNode {
+        let expr = this.parsePower();
+
+        while (this.match(TokenType.TIMES, TokenType.DIVIDE, TokenType.STAR, TokenType.SLASH, TokenType.PERCENT, TokenType.DOUBLE_SLASH, TokenType.MOD, TokenType.DIV)) {
+            const operator = this.previous().type;
+            const right = this.parsePower();
+            expr = {
+                type: "BinaryExpression",
+                operator,
+                left: expr,
+                right
+            };
+        }
+        return expr;
+    }
+
+    private parsePower(): AST.ExpressionNode {
         let expr = this.parseUnary();
 
-        while (this.match(TokenType.STAR, TokenType.SLASH, TokenType.PERCENT, TokenType.DOUBLE_SLASH, TokenType.MOD, TokenType.DIV)) {
+        if (this.match(TokenType.CARET, TokenType.DOUBLE_STAR)) {
             const operator = this.previous().type;
-            const right = this.parseUnary();
+            const right = this.parsePower();
             expr = {
                 type: "BinaryExpression",
                 operator,
@@ -724,6 +743,18 @@ export class Parser {
                     callee: expr,
                     args
                 };
+                continue;
+            }
+
+            if (this.match(TokenType.DOT)) {
+                const prop = this.consume(TokenType.IDENTIFIER, "Syntax Error: Expected identifier after '.' at line " + this.peek().line + ", column " + this.peek().column);
+
+                expr = {
+                    type: "MemberExpression",
+                    object: expr,
+                    property: prop.value!
+                };
+
                 continue;
             }
             
