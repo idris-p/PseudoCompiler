@@ -135,6 +135,61 @@ export class Interpreter {
     }
 
     private async executeFor(node: AST.ForNode) {
+        // NEW: range-based for (Python-style)
+        if (node.range) {
+            const variable = node.range.variable;
+
+            let start = await this.evaluateExpression(node.range.start);
+            const end = await this.evaluateExpression(node.range.end);
+            const step = await this.evaluateExpression(node.range.step);
+
+            if (typeof start !== "number" || typeof end !== "number" || typeof step !== "number") {
+                throw new Error("Type Error: for-range start/end/step must be numbers");
+            }
+            if (step === 0) {
+                throw new Error("Math Error: for-range step cannot be 0");
+            }
+
+            // Adjust start if start is EXCLUSIVE (move one step in the step direction)
+            if (!node.range.startInclusive) {
+                start = start + (step > 0 ? 1 : -1);
+            }
+
+            // Set initial loop variable
+            this.environment.set(variable, start);
+
+            const withinBounds = (i: number) => {
+                if (step > 0) {
+                    return node.range!.endInclusive ? i <= end : i < end;
+                } else {
+                    return node.range!.endInclusive ? i >= end : i > end;
+                }
+            };
+
+            let iter = 0;
+
+            while (withinBounds(this.environment.get(variable))) {
+                try {
+                    node.body.forEach(stmt => this.executeStatement(stmt));
+                } catch (e) {
+                    if (e instanceof BreakSignal) break;
+                    throw e;
+                }
+
+                // i = i + step
+                const current = this.environment.get(variable);
+                this.environment.set(variable, current + step);
+
+                iter++;
+                if (iter % 200 === 0) {
+                    await this.yieldToBrowser();
+                }
+            }
+
+            return;
+        }
+
+        // Existing C-style for loop
         if (node.initializer) {
             await this.executeStatement(node.initializer);
         }
@@ -146,14 +201,11 @@ export class Interpreter {
                 for (const stmt of node.body) {
                     await this.executeStatement(stmt);
                 }
+            } catch (e) {
+                if (e instanceof BreakSignal) break;
+                throw e;
             }
-            catch (e) {
-                if (e instanceof BreakSignal) {
-                    break;
-                } else {
-                    throw e;
-                }
-            }
+
             if (node.update) {
                 await this.executeStatement(node.update);
             }
@@ -161,7 +213,7 @@ export class Interpreter {
             iter++;
             if (iter % 200 === 0) {
                 await this.yieldToBrowser();
-            }
+            }       
         }
     }
 

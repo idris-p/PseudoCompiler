@@ -132,6 +132,13 @@ export class Parser {
                 return;
             }
         }
+
+        if (blockType === BlockType.DO) {
+            if (this.match(TokenType.END, TokenType.LOOP)) {
+                this.consumeStatementTerminator();
+                return;
+            }
+        }
     }
 
     private beginBlock(blockType: BlockType, line: number, column: number): void {
@@ -526,26 +533,10 @@ export class Parser {
             const variable = this.consume(TokenType.IDENTIFIER, "Syntax Error: Expected variable name in for loop at line " + this.peek().line + ", column " + this.peek().column).value!;
             this.consume(this.getAssignmentTokenType(), "Syntax Error: Expected assignment operator after variable name in for loop at line " + this.peek().line + ", column " + this.peek().column);
 
-            let start = this.parseExpression();
+            const start = this.parseExpression();
             this.consume(TokenType.TO, "Syntax Error: Expected 'to' in for loop after start expression at line " + this.peek().line + ", column " + this.peek().column);
-            if (!config.forInclusive[0]) {
-                start = {
-                    type: "BinaryExpression",
-                    operator: TokenType.PLUS,
-                    left: start,
-                    right: { type: "Number", value: 1 }
-                };
-            }
 
-            let end = this.parseExpression();
-            if (config.forInclusive[1]) {
-                end = {
-                    type: "BinaryExpression",
-                    operator: TokenType.PLUS,
-                    left: end,
-                    right: { type: "Number", value: 1 }
-                };
-            }
+            const end = this.parseExpression();
 
             // Optional step syntax: for i = 0 to 10 step 2
             let step: AST.ExpressionNode = { type: "Number", value: 1 };
@@ -554,45 +545,20 @@ export class Parser {
                 step = this.parseExpression();
             }
 
-            const initializer: AST.StatementNode = {
-                type: "VariableAssignment",
-                name: variable,
-                value: start
-            };
-
-            const condition: AST.ExpressionNode = {
-                type: "BinaryExpression",
-                operator: TokenType.LESS,
-                left: {
-                    type: "Identifier",
-                    name: variable
-                },
-                right: end
-            };
-
-            const update: AST.StatementNode = {
-                type: "VariableAssignment",
-                name: variable,
-                value: {
-                    type: "BinaryExpression",
-                    operator: TokenType.PLUS,
-                    left: {
-                        type: "Identifier",
-                        name: variable
-                    },
-                    right: step
-                }
-            };
-
             const body = this.parseBlock(BlockType.FOR);
             this.consumeBlockTerminator(BlockType.FOR);
 
             return {
                 type: "For",
-                initializer,
-                condition,
-                update,
-                body
+                body,
+                range: {
+                    variable,
+                    start,
+                    end,
+                    step,
+                    startInclusive: config.forInclusive[0],
+                    endInclusive: config.forInclusive[1],
+                }
             };
         }
     }
@@ -611,14 +577,13 @@ export class Parser {
     }
 
     private parseDoUntilStatement(): AST.DoUntilNode {
-        // Form 2: do until (condition) { ... }
+        // do until (condition) { ... }
         if (this.match(TokenType.UNTIL)) {
             const condition = this.parseUntilCondition();
             const body = this.parseBlock(BlockType.DO);
 
-            // Optional trailing terminator for curly brace style:
-            // e.g. do until (x) { ... };
             this.skipNewlinesAndSemicolons();
+            this.consumeBlockTerminator(BlockType.DO);
             if (this.codeStyle === CodeStyle.CURLY_BRACES && this.checkType(TokenType.SEMI_COLON)) {
             this.advance();
             }
@@ -626,7 +591,7 @@ export class Parser {
             return { type: "DoUntil", condition, body };
         }
 
-        // Form 1: do { ... } until (condition)
+        // do { ... } until (condition)
         const body = this.parseBlock(BlockType.DO);
 
         // After block, expect: until (condition)
@@ -634,8 +599,6 @@ export class Parser {
         this.consume(TokenType.UNTIL, `Syntax Error: Expected 'until' after do-block at line ${this.peek().line}, column ${this.peek().column}`);
 
         const condition = this.parseUntilCondition();
-
-        // In both styles, this line is a statement, so require a terminator when appropriate
         this.consumeStatementTerminator();
 
         return { type: "DoUntil", condition, body };

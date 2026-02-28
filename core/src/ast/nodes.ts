@@ -92,6 +92,15 @@ export type ForNode = {
     condition?: ExpressionNode;
     update?: StatementNode;
     body: StatementNode[];
+
+    range?: {
+        variable: string;
+        start: ExpressionNode;
+        end: ExpressionNode;
+        step: ExpressionNode;
+        startInclusive: boolean;
+        endInclusive: boolean;
+    };
 };
 
 export type UnaryExpressionNode = {
