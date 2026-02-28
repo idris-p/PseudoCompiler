@@ -619,11 +619,11 @@ export class Parser {
     }
     
     private parseExpression(): AST.ExpressionNode {
-        return this.parseEquality();
+        return this.parseConcat();
     }
 
     private parseConcat(): AST.ExpressionNode {
-        let expr = this.parseEquality();
+        let expr = this.parseOr();
 
         while (this.match(TokenType.COMMA)) {
             const right = this.parseEquality();
@@ -638,6 +638,37 @@ export class Parser {
             }
         }
         return expr;
+    }
+
+    private parseOr(): AST.ExpressionNode {
+        let expr = this.parseAnd();
+
+        while (this.match(TokenType.OR)) {
+            const right = this.parseAnd();
+            expr = { type: "BinaryExpression", operator: TokenType.OR, left: expr, right };
+        }
+
+        return expr;
+    }
+
+    private parseAnd(): AST.ExpressionNode {
+        let expr = this.parseNot();
+
+        while (this.match(TokenType.AND)) {
+            const right = this.parseNot();
+            expr = { type: "BinaryExpression", operator: TokenType.AND, left: expr, right };
+        }
+
+        return expr;
+    }
+
+    private parseNot(): AST.ExpressionNode {
+        if (this.match(TokenType.NOT)) {
+            const right = this.parseNot();
+            return { type: "UnaryExpression", operator: TokenType.NOT, operand: right };
+        }
+
+        return this.parseEquality();
     }
 
     private parseEquality(): AST.ExpressionNode {

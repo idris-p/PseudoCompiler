@@ -66,6 +66,11 @@ export enum TokenType {
     LEFT_ARROW = "LEFT_ARROW",
     COLON_EQUALS = "COLON_EQUALS",
 
+    // Boolean Operators
+    AND = "AND",
+    OR = "OR",
+    NOT = "NOT",
+
     // Symbols
     LEFT_PAREN = "LEFT_PAREN",
     RIGHT_PAREN = "RIGHT_PAREN",

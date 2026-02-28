@@ -23,6 +23,9 @@ const STATIC_KEYWORDS = [
     "end",
     "mod",
     "div",
+    "and",
+    "or",
+    "not"
 ];
 
 const STATIC_FUNCTIONS = [
@@ -89,7 +92,7 @@ function setTokenizer(monacoInstance: typeof Monaco) {
                 [new RegExp(`\\b(${FUNCTIONS.join("|")})\\b`), "type.identifier"],
 
                 // Booleans
-                [new RegExp(`\\b(${BOOLEANS.join("|")})\\b`), "constant.boolean"],
+                [new RegExp(`\\b(${BOOLEANS.join("|")})\\b`), "type.boolean"],
 
                 // Strings (stateful, supports escapes + highlight them)
                 [/"/, "string.quote", "@string_double"],

@@ -170,7 +170,9 @@ export class Interpreter {
 
             while (withinBounds(this.environment.get(variable))) {
                 try {
-                    node.body.forEach(stmt => this.executeStatement(stmt));
+                    for (const stmt of node.body) {
+                        await this.executeStatement(stmt);
+                    }
                 } catch (e) {
                     if (e instanceof BreakSignal) break;
                     throw e;
@@ -264,6 +266,10 @@ export class Interpreter {
             throw new Error(`Runtime Error: ${context} must be an integer`);
         }
         return value;
+    }
+
+    private isTruthy(value: any): boolean {
+        return !!value;
     }
 
     private sliceSequence<T extends string | any[]>(seq: T, startVal: any, endVal: any, step: number): T {
@@ -393,12 +399,34 @@ export class Interpreter {
         switch (node.operator) {
             case "MINUS":
                 return -operand;
+            case "PLUS":
+                return +operand;
+            case "NOT":
+                return !this.isTruthy(operand);
             default:
                 throw new Error(`Runtime Error: Unknown unary operator: ${node.operator}`);
         }
     };
 
     private async evaluateBinaryExpression(node: AST.BinaryExpressionNode): Promise<any> {
+        if (node.operator === "AND") {
+            const left = await this.evaluateExpression(node.left);
+            if (!this.isTruthy(left)) {
+                return false;
+            }
+            const right = await this.evaluateExpression(node.right);
+            return this.isTruthy(right);
+        }
+
+        if (node.operator === "OR") {
+            const left = await this.evaluateExpression(node.left);
+            if (this.isTruthy(left)) {
+                return true;
+            }
+            const right = await this.evaluateExpression(node.right);
+            return this.isTruthy(right);
+        }
+
         const left = await this.evaluateExpression(node.left);
         const right = await this.evaluateExpression(node.right);
         switch (node.operator) {

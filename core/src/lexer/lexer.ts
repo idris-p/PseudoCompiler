@@ -29,6 +29,9 @@ function getKeywords(): Record<string, TokenType> {
         [config.passSyntax]: TokenType.PASS,
         "mod": TokenType.MOD,
         "div": TokenType.DIV,
+        "and": TokenType.AND,
+        "or": TokenType.OR,
+        "not": TokenType.NOT
     }
 }
 
@@ -479,11 +482,26 @@ export class Lexer {
                 return this.makeToken(TokenType.COLON, ":")
             case ";":
                 return this.makeToken(TokenType.SEMI_COLON, ";")
+            case "&":
+                if (this.peek() === "&") {
+                    this.advance()
+                    return this.makeToken(TokenType.AND, "&&")
+                }
+                return this.makeToken(TokenType.AND, "&")
+            case "|":
+                if (this.peek() === "|") {
+                    this.advance()
+                    return this.makeToken(TokenType.OR, "||")
+                }
+                throw new Error(`Syntax Error: Unexpected character '|' at line ${this.line}, column ${this.column - 1}`)
+            case "¬":
+                return this.makeToken(TokenType.NOT, "¬")
             case "!":
                 if (this.peek() === "=") {
                     this.advance()
                     return this.makeToken(TokenType.NOT_EQUALS, "!=")
                 }
+                return this.makeToken(TokenType.NOT, "!")
             case "<":
                 if (this.peek() === "=") {
                     this.advance()
