@@ -59,6 +59,9 @@ export class Interpreter {
             case "While":
                 await this.executeWhile(node);
                 break;
+            case "DoUntil":
+                await this.executeDoUntil(node);
+                break;
             case "Pass":
                 // Do nothing
                 break;
@@ -73,7 +76,7 @@ export class Interpreter {
         if (node.name.toLowerCase() === "pi") {
             throw new Error("Runtime Error: Cannot assign to constant 'pi'");
         }
-        
+
         const value = await this.evaluateExpression(node.value);
         this.environment.set(node.name, value);
     }
@@ -181,6 +184,22 @@ export class Interpreter {
             if (iter % 200 === 0) {
                 await this.yieldToBrowser();
             }
+        }
+    }
+
+    private async executeDoUntil(node: AST.DoUntilNode) {
+        while (true) {
+            try {
+                for (const stmt of node.body) {
+                    await this.executeStatement(stmt);
+                }
+            } catch (e) {
+                if (e instanceof BreakSignal) break;
+                throw e;
+            }
+
+            // stop when condition becomes true
+            if (await this.evaluateExpression(node.condition)) break;
         }
     }
 

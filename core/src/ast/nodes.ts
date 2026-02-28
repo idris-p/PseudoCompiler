@@ -11,6 +11,7 @@ export type StatementNode =
     | SwitchNode
     | ForNode
     | WhileNode
+    | DoUntilNode
     | PassNode
     | BreakNode;
 
@@ -75,6 +76,12 @@ export type SwitchCaseNode = {
 
 export type WhileNode = {
     type: "While";
+    condition: ExpressionNode;
+    body: StatementNode[];
+};
+
+export type DoUntilNode = {
+    type: "DoUntil";
     condition: ExpressionNode;
     body: StatementNode[];
 };

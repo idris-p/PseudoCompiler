@@ -20,7 +20,10 @@ function getKeywords(): Record<string, TokenType> {
         [config.breakSyntax]: TokenType.BREAK,
         "while": TokenType.WHILE,
         "endwhile": TokenType.END_WHILE,
+        "do": TokenType.DO,
+        "until": TokenType.UNTIL,
         "end": TokenType.END,
+        "loop": TokenType.LOOP,
         [config.printSyntax]: TokenType.PRINT,
         [config.inputSyntax]: TokenType.INPUT,
         [config.passSyntax]: TokenType.PASS,
@@ -40,6 +43,7 @@ const BLOCK_OPENERS: Set<TokenType> = new Set([
     TokenType.DEFAULT,
     TokenType.FOR,
     TokenType.WHILE,
+    TokenType.DO
 ])
 
 // Lexer Class - converts source code into tokens
@@ -106,12 +110,15 @@ export class Lexer {
             }
 
             // Comments
-            if (char === config.commentSyntax || char + this.peek() === config.commentSyntax) {
-                // Skip comments
-                while (!this.isAtEnd() && this.peek() !== '\n') {
-                    this.advance()
+            if (this.startsWithAt(this.position, config.commentSyntax)) {
+                // skip the comment marker itself
+                this.advanceN(config.commentSyntax.length);
+
+                // skip rest of line
+                while (!this.isAtEnd() && this.peek() !== "\n") {
+                    this.advance();
                 }
-                continue
+                continue;
             }
 
             // Operators and Symbols
@@ -195,11 +202,18 @@ export class Lexer {
                 continue;
             }
 
-            if (char === config.commentSyntax) return true;
             if (char === '\n') return false;
-            return false;
+            return this.startsWithAt(pos, config.commentSyntax);
         }
         return false;
+    }
+
+    private startsWithAt(pos: number, s: string): boolean {
+        return s.length > 0 && this.sourceCode.startsWith(s, pos);
+    }
+
+    private advanceN(n: number) {
+        for (let i = 0; i < n; i++) this.advance();
     }
 
 

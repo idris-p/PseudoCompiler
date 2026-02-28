@@ -22,6 +22,10 @@ export enum TokenType {
     WHILE = "WHILE",
     END_WHILE = "END_WHILE",
 
+    DO = "DO",
+    UNTIL = "UNTIL",
+    LOOP = "LOOP",
+
     END = "END",
     
     PRINT = "PRINT",

@@ -11,7 +11,8 @@ enum BlockType {
     CASE,
     DEFAULT,
     FOR,
-    WHILE
+    WHILE,
+    DO
 }
 
 // Parser Class - converts tokens into AST
@@ -119,14 +120,14 @@ export class Parser {
         }
 
         if (blockType === BlockType.FOR) {
-            if (this.match(TokenType.END_FOR, TokenType.END)) {
+            if (this.match(TokenType.END_FOR, TokenType.END, TokenType.LOOP)) {
                 this.consumeStatementTerminator();
                 return;
             }
         }
 
         if (blockType === BlockType.WHILE) {
-            if (this.match(TokenType.END_WHILE, TokenType.END)) {
+            if (this.match(TokenType.END_WHILE, TokenType.END, TokenType.LOOP)) {
                 this.consumeStatementTerminator();
                 return;
             }
@@ -220,6 +221,21 @@ export class Parser {
         }
     }
 
+    private parseUntilCondition(): AST.ExpressionNode {
+        // Optional parentheses: until (x == 5) OR until x == 5
+        if (this.match(TokenType.LEFT_PAREN)) {
+            const condition = this.parseExpression();
+            this.consume(
+            TokenType.RIGHT_PAREN,
+            "Syntax Error: Expected ')' after until condition at line " + this.peek().line + ", column " + this.peek().column
+            );
+            return condition;
+        }
+
+        // No parens
+        return this.parseExpression();
+    }
+
     private parseStatement(): AST.StatementNode {
         this.skipNewlinesAndSemicolons();
         if (this.match(TokenType.PRINT)) {
@@ -239,6 +255,9 @@ export class Parser {
         }
         if (this.match(TokenType.WHILE)) {
             return this.parseWhileStatement();
+        }
+        if (this.match(TokenType.DO)) {
+            return this.parseDoUntilStatement();
         }
         if (this.checkType(TokenType.IDENTIFIER)) {
             return this.parseAssignmentOrCompound();
@@ -396,8 +415,13 @@ export class Parser {
             elseBody = [this.parseIfStatement()];
         }
         else if (this.match(TokenType.ELSE)) {
-            this.skipNewlines();
-            elseBody = this.parseBlock(BlockType.ELSE);
+            if (this.match(TokenType.IF)) {
+                elseBody = [this.parseIfStatement()];
+            }
+            else {
+                this.skipNewlines();
+                elseBody = this.parseBlock(BlockType.ELSE);
+            }
         }
 
         this.consumeBlockTerminator(BlockType.IF);
@@ -584,6 +608,37 @@ export class Parser {
             condition,
             body
         };
+    }
+
+    private parseDoUntilStatement(): AST.DoUntilNode {
+        // Form 2: do until (condition) { ... }
+        if (this.match(TokenType.UNTIL)) {
+            const condition = this.parseUntilCondition();
+            const body = this.parseBlock(BlockType.DO);
+
+            // Optional trailing terminator for curly brace style:
+            // e.g. do until (x) { ... };
+            this.skipNewlinesAndSemicolons();
+            if (this.codeStyle === CodeStyle.CURLY_BRACES && this.checkType(TokenType.SEMI_COLON)) {
+            this.advance();
+            }
+
+            return { type: "DoUntil", condition, body };
+        }
+
+        // Form 1: do { ... } until (condition)
+        const body = this.parseBlock(BlockType.DO);
+
+        // After block, expect: until (condition)
+        this.skipNewlinesAndSemicolons();
+        this.consume(TokenType.UNTIL, `Syntax Error: Expected 'until' after do-block at line ${this.peek().line}, column ${this.peek().column}`);
+
+        const condition = this.parseUntilCondition();
+
+        // In both styles, this line is a statement, so require a terminator when appropriate
+        this.consumeStatementTerminator();
+
+        return { type: "DoUntil", condition, body };
     }
 
     private parsePassStatement(): AST.PassNode {
