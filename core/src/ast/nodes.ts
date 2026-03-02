@@ -13,6 +13,7 @@ export type StatementNode =
     | WhileNode
     | DoUntilNode
     | PassNode
+    | ContinueNode
     | BreakNode;
 
 export type ExpressionNode =
@@ -157,6 +158,10 @@ export type IdentifierNode = {
 
 export type PassNode = {
     type: "Pass";
+};
+
+export type ContinueNode = {
+    type: "Continue";
 };
 
 export type BreakNode = {

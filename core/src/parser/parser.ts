@@ -18,6 +18,7 @@ enum BlockType {
 // Parser Class - converts tokens into AST
 export class Parser {
     private tokens: Token[];
+    private blockStack: BlockType[] = [];
     private position = 0;
     private codeStyle: CodeStyle;
 
@@ -172,15 +173,21 @@ export class Parser {
 
     private parseBlock(blockType: BlockType): AST.StatementNode[] {
         this.beginBlock(blockType, this.peek().line, this.peek().column);
+        this.blockStack.push(blockType);
 
-        const statements: AST.StatementNode[] = [];
-        while (!this.isAtBlockEnd() && !this.isAtEnd()) {
-            this.skipNewlinesAndSemicolons();
-            if (this.isAtBlockEnd()) break;
-            statements.push(this.parseStatement());
+        try {
+            const statements: AST.StatementNode[] = [];
+            while (!this.isAtBlockEnd() && !this.isAtEnd()) {
+                this.skipNewlinesAndSemicolons();
+                if (this.isAtBlockEnd()) break;
+                statements.push(this.parseStatement());
+            }
+            this.endBlock();
+            return statements;
         }
-        this.endBlock();
-        return statements;
+        finally {
+            this.blockStack.pop();
+        }
     }
 
     private isAtBlockEnd(): boolean {
@@ -192,6 +199,14 @@ export class Parser {
             }
             return this.checkType(TokenType.RIGHT_CURLY);
         }
+    }
+
+    private isInsideLoop(): boolean {
+        return this.blockStack.includes(BlockType.FOR) || this.blockStack.includes(BlockType.WHILE) || this.blockStack.includes(BlockType.DO);
+    }
+
+    private isInsideSwitch(): boolean {
+        return this.blockStack.includes(BlockType.SWITCH);
     }
 
     private skipNewlines(): void {
@@ -271,6 +286,9 @@ export class Parser {
         }
         if (this.match(TokenType.PASS)) {
             return this.parsePassStatement();
+        }
+        if (this.match(TokenType.CONTINUE)) {
+            return this.parseContinueStatement();
         }
         if (this.match(TokenType.BREAK)) {
             return this.parseBreakStatement();
@@ -611,11 +629,20 @@ export class Parser {
         };
     }
 
-    private parseBreakStatement(): AST.BreakNode {
+    private parseContinueStatement(): AST.ContinueNode {
+        if (!this.isInsideLoop()) {
+            throw new Error(`Syntax Error: 'continue' can only be used inside a loop (line ${this.previous().line}, column ${this.previous().column})`);
+        }
         this.consumeStatementTerminator();
-        return {
-            type: "Break"
-        };
+        return { type: "Continue" };
+    }
+
+    private parseBreakStatement(): AST.BreakNode {
+        if (!this.isInsideLoop() && !this.isInsideSwitch()) {
+            throw new Error(`Syntax Error: 'break' can only be used inside a loop or switch (line ${this.previous().line}, column ${this.previous().column})`);
+        }
+        this.consumeStatementTerminator();
+        return { type: "Break" };
     }
     
     private parseExpression(): AST.ExpressionNode {

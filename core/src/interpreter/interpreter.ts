@@ -7,6 +7,7 @@ export type ExecutionResult = {
 }
 
 class BreakSignal {}
+class ContinueSignal {}
 
 export type RuntimeIO = {
     write: (value: string) => void;                 // stream output immediately
@@ -67,6 +68,8 @@ export class Interpreter {
                 break;
             case "Break":
                 throw new BreakSignal();
+            case "Continue":
+                throw new ContinueSignal();
             default:
                 throw new Error(`Runtime Error: Unknown statement type: ${(node as any).type}`);
         }
@@ -128,7 +131,8 @@ export class Interpreter {
             if (e instanceof BreakSignal) {
                 // Exit switch on break
                 return;
-            } else {
+            }
+            else {
                 throw e;
             }
         }
@@ -174,8 +178,14 @@ export class Interpreter {
                         await this.executeStatement(stmt);
                     }
                 } catch (e) {
-                    if (e instanceof BreakSignal) break;
-                    throw e;
+                    if (e instanceof ContinueSignal) {
+                    }
+                    else if (e instanceof BreakSignal) {
+                        break;
+                    }
+                    else {
+                        throw e;
+                    }
                 }
 
                 // i = i + step
@@ -204,8 +214,14 @@ export class Interpreter {
                     await this.executeStatement(stmt);
                 }
             } catch (e) {
-                if (e instanceof BreakSignal) break;
-                throw e;
+                if (e instanceof ContinueSignal) {
+                }
+                else if (e instanceof BreakSignal) {
+                    break;
+                }
+                else {
+                    throw e;
+                }
             }
 
             if (node.update) {
@@ -227,9 +243,12 @@ export class Interpreter {
                     await this.executeStatement(stmt);
                 }
             } catch (e) {
-                if (e instanceof BreakSignal) {
+                if (e instanceof ContinueSignal) {
+                }
+                else if (e instanceof BreakSignal) {
                     break;
-                } else {
+                }
+                else {
                     throw e;
                 }
             }
@@ -248,8 +267,14 @@ export class Interpreter {
                     await this.executeStatement(stmt);
                 }
             } catch (e) {
-                if (e instanceof BreakSignal) break;
-                throw e;
+                if (e instanceof ContinueSignal) {
+                }
+                else if (e instanceof BreakSignal) {
+                    break;
+                }
+                else {
+                    throw e;
+                }
             }
 
             // stop when condition becomes true

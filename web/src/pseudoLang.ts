@@ -15,6 +15,7 @@ const STATIC_KEYWORDS = [
     "to",
     "step",
     "endfor",
+    "continue",
     "while",
     "endwhile",
     "do",
