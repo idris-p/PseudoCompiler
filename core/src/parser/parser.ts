@@ -279,7 +279,7 @@ export class Parser {
             return this.parseWhileStatement();
         }
         if (this.match(TokenType.DO)) {
-            return this.parseDoUntilStatement();
+            return this.parseDoStatement();
         }
         if (this.checkType(TokenType.IDENTIFIER)) {
             return this.parseAssignmentOrCompound();
@@ -594,32 +594,60 @@ export class Parser {
         };
     }
 
-    private parseDoUntilStatement(): AST.DoUntilNode {
-        // do until (condition) { ... }
+    private parseDoStatement(): AST.StatementNode {
+        // Case 1: do while (condition) { ... }
+        if (this.match(TokenType.WHILE)) {
+            const condition = this.parseUntilCondition();
+            const body = this.parseBlock(BlockType.DO);
+
+            this.consumeBlockTerminator(BlockType.DO);
+
+            return {
+                type: "DoWhile",
+                condition,
+                body
+            };
+        }
+
+        // Case 2: do until (...)   (existing behaviour)
         if (this.match(TokenType.UNTIL)) {
             const condition = this.parseUntilCondition();
             const body = this.parseBlock(BlockType.DO);
 
-            this.skipNewlinesAndSemicolons();
             this.consumeBlockTerminator(BlockType.DO);
-            if (this.codeStyle === CodeStyle.CURLY_BRACES && this.checkType(TokenType.SEMI_COLON)) {
-            this.advance();
-            }
 
             return { type: "DoUntil", condition, body };
         }
 
-        // do { ... } until (condition)
+        // Case 3: do { ... } while (...)
         const body = this.parseBlock(BlockType.DO);
 
-        // After block, expect: until (condition)
         this.skipNewlinesAndSemicolons();
-        this.consume(TokenType.UNTIL, `Syntax Error: Expected 'until' after do-block at line ${this.peek().line}, column ${this.peek().column}`);
 
-        const condition = this.parseUntilCondition();
-        this.consumeStatementTerminator();
+        if (this.match(TokenType.WHILE)) {
+            const condition = this.parseUntilCondition();
+            this.consumeStatementTerminator();
 
-        return { type: "DoUntil", condition, body };
+            return {
+                type: "DoWhile",
+                condition,
+                body
+            };
+        }
+
+        // Case 4: do { ... } until (...)
+        if (this.match(TokenType.UNTIL)) {
+            const condition = this.parseUntilCondition();
+            this.consumeStatementTerminator();
+
+            return {
+                type: "DoUntil",
+                condition,
+                body
+            };
+        }
+
+        throw new Error(`Syntax Error: Expected 'while' or 'until' after do-block at line ${this.peek().line}, column ${this.peek().column}`);
     }
 
     private parsePassStatement(): AST.PassNode {

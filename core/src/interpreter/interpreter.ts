@@ -60,6 +60,9 @@ export class Interpreter {
             case "While":
                 await this.executeWhile(node);
                 break;
+            case "DoWhile":
+                await this.executeDoWhile(node);
+                break;
             case "DoUntil":
                 await this.executeDoUntil(node);
                 break;
@@ -256,6 +259,27 @@ export class Interpreter {
             iter++;
             if (iter % 200 === 0) {
                 await this.yieldToBrowser();
+            }
+        }
+    }
+
+    private async executeDoWhile(node: AST.DoWhileNode) {
+        while (true) {
+            try {
+                for (const stmt of node.body) {
+                    await this.executeStatement(stmt);
+                }
+            } catch (e) {
+                if (e instanceof ContinueSignal) {
+                } else if (e instanceof BreakSignal) {
+                    break;
+                } else {
+                    throw e;
+                }
+            }
+
+            if (!(await this.evaluateExpression(node.condition))) {
+                break;
             }
         }
     }
