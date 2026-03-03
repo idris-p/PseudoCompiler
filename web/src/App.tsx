@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import Container from './components/Container'
 import SideButtons from './components/SideButtons'
+import { config } from '../../core/src/loader';
 
 function App() {
   const [showConfig, setShowConfig] = useState(false)
-  const [code, setCode] = useState<string>(localStorage.getItem("pseudoCode") || "# Write some pseudocode here\n\n");
+  const [code, setCode] = useState<string>(localStorage.getItem("pseudoCode") || config.commentSyntax + " Write some pseudocode here\n\n");
   const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
   const [pendingInput, setPendingInput] = useState<{prompt?: string; resolve: (value: string) => void;} | null>(null);
 

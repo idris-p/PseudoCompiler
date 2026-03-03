@@ -138,6 +138,19 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 Switch-Case
             </h2>
 
+            <KeywordField
+                label="Switch Keyword"
+                value={config.switchSyntax}
+                placeholder="switch"
+                onValidChange={(value) => {
+                    config.switchSyntax = value;
+                    persistConfig();
+                }}
+                onAfterChange={() => {
+                    if (monaco) refreshPseudoLanguage(monaco);
+                }}
+            />
+
             <label className="text-md block mb-4 font-semibold">
                 Switch Fallthrough
                 <input
@@ -190,6 +203,19 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 placeholder="break"
                 onValidChange={(value) => {
                     config.breakSyntax = value;
+                    persistConfig();
+                }}
+                onAfterChange={() => {
+                    if (monaco) refreshPseudoLanguage(monaco);
+                }}
+            />
+
+            <KeywordField
+                label="Continue Keyword"
+                value={config.continueSyntax}
+                placeholder="continue"
+                onValidChange={(value) => {
+                    config.continueSyntax = value;
                     persistConfig();
                 }}
                 onAfterChange={() => {

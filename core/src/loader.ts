@@ -7,7 +7,9 @@ export interface UserConfig {
     assignmentSyntax: AssignmentSymbol;
     inputSyntax: string;
     printSyntax: string;
+    switchSyntax: string;
     breakSyntax: string;
+    continueSyntax: string;
     passSyntax: string;
     lengthSyntax: string;
     substringSyntax: string;
@@ -21,7 +23,9 @@ const DEFAULT_CONFIG: UserConfig = {
     assignmentSyntax: "=",
     inputSyntax: "input",
     printSyntax: "print",
+    switchSyntax: "switch",
     breakSyntax: "break",
+    continueSyntax: "continue",
     passSyntax: "pass",
     lengthSyntax: "len",
     substringSyntax: "substring",
@@ -53,11 +57,13 @@ function sanitizeString(value: unknown, fallback: string): string {
     return trimmed.length > 0 ? trimmed : fallback;
 }
 
-function sanitizeKeywordFields( parsed: any, defaults: UserConfig): Pick<UserConfig, "inputSyntax" | "printSyntax" | "breakSyntax" | "passSyntax" | "lengthSyntax" | "substringSyntax"> {
+function sanitizeKeywordFields( parsed: any, defaults: UserConfig): Pick<UserConfig, "inputSyntax" | "printSyntax" | "switchSyntax" | "breakSyntax" | "continueSyntax" | "passSyntax" | "lengthSyntax" | "substringSyntax"> {
     return {
         inputSyntax: sanitizeString(parsed.inputSyntax, defaults.inputSyntax),
         printSyntax: sanitizeString(parsed.printSyntax, defaults.printSyntax),
+        switchSyntax: sanitizeString(parsed.switchSyntax, defaults.switchSyntax),
         breakSyntax: sanitizeString(parsed.breakSyntax, defaults.breakSyntax),
+        continueSyntax: sanitizeString(parsed.continueSyntax, defaults.continueSyntax),
         passSyntax: sanitizeString(parsed.passSyntax, defaults.passSyntax),
         lengthSyntax: sanitizeString(parsed.lengthSyntax, defaults.lengthSyntax),
         substringSyntax: sanitizeString(parsed.substringSyntax, defaults.substringSyntax),

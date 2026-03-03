@@ -7,15 +7,12 @@ const STATIC_KEYWORDS = [
     "elseif",
     "else",
     "endif",
-    "switch",
     "case",
     "default",
-    "endswitch",
     "for",
     "to",
     "step",
     "endfor",
-    "continue",
     "while",
     "endwhile",
     "do",
@@ -77,7 +74,7 @@ function escapeRegex(str: string): string {
 /* ---------------- Tokenizer ---------------- */
 
 function setTokenizer(monacoInstance: typeof Monaco) {
-    const KEYWORDS = [...STATIC_KEYWORDS, config.breakSyntax, config.passSyntax];
+    const KEYWORDS = [...STATIC_KEYWORDS, config.switchSyntax, "end" + config.switchSyntax, config.breakSyntax, config.continueSyntax, config.passSyntax];
     const FUNCTIONS = [...STATIC_FUNCTIONS, config.inputSyntax, config.printSyntax, config.lengthSyntax, config.substringSyntax];
 
     monacoInstance.languages.setMonarchTokensProvider("pseudo", {
@@ -196,7 +193,7 @@ function registerCompletionProvider(monacoInstance: typeof Monaco) {
                     endColumn: word.endColumn,
                 };
 
-                const KEYWORDS = [...STATIC_KEYWORDS, config.breakSyntax, config.passSyntax];
+                const KEYWORDS = [...STATIC_KEYWORDS, config.switchSyntax, "end" + config.switchSyntax, config.breakSyntax, config.continueSyntax, config.passSyntax];
 
                 const functionSuggestions = FUNCTIONS.map((fn) => {
                     // Special-case: input() with cursor inside brackets
