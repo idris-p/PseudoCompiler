@@ -376,28 +376,25 @@ export class Parser {
 
     private parsePrintStatement(): AST.PrintNode {
         if (this.match(TokenType.LEFT_PAREN)) {
-            const parts: AST.ExpressionNode[] = [];
+            const args: AST.ExpressionNode[] = [];
 
-            // Allow empty: print()
             if (!this.checkType(TokenType.RIGHT_PAREN)) {
                 do {
-                    parts.push(this.parseExpression());
-                }
-                while (this.match(TokenType.COMMA));
+                    args.push(this.parseExpression());
+                } while (this.match(TokenType.COMMA));
             }
 
-            this.consume(TokenType.RIGHT_PAREN, "Syntax Error: Expected ')' after print arguments at line " + this.peek().line + ", column " + this.peek().column);
+            this.consume(
+                TokenType.RIGHT_PAREN,
+                "Syntax Error: Expected ')' after print arguments at line " +
+                    this.peek().line +
+                    ", column " +
+                    this.peek().column
+            );
 
             this.consumeStatementTerminator();
 
-            const expression = parts.length === 0 ? { type: "String", value: "" } as AST.ExpressionNode
-                                : parts.length === 1 ? parts[0]
-                                : ({ type: "Concat", parts } as AST.ExpressionNode);
-
-            return { 
-                type: "Print",
-                expression
-            };
+            return { type: "Print", args };
         }
 
         const expression = this.parseExpression();
@@ -405,7 +402,7 @@ export class Parser {
 
         return {
             type: "Print",
-            expression
+            args: [expression]
         };
     }
 
@@ -674,25 +671,7 @@ export class Parser {
     }
     
     private parseExpression(): AST.ExpressionNode {
-        return this.parseConcat();
-    }
-
-    private parseConcat(): AST.ExpressionNode {
-        let expr = this.parseOr();
-
-        while (this.match(TokenType.COMMA)) {
-            const right = this.parseEquality();
-            
-            if (expr.type === "Concat") {
-                expr.parts.push(right);
-            } else {
-                expr = {
-                    type: "Concat",
-                    parts: [expr, right]
-                };
-            }
-        }
-        return expr;
+        return this.parseOr();
     }
 
     private parseOr(): AST.ExpressionNode {
@@ -807,6 +786,22 @@ export class Parser {
     }
 
     private parseUnary(): AST.ExpressionNode {
+        if (this.match(TokenType.DOUBLE_PLUS) || this.match(TokenType.DOUBLE_MINUS)) {
+            const operator = this.previous().type as TokenType.DOUBLE_PLUS | TokenType.DOUBLE_MINUS;
+            const operand = this.parseUnary();
+
+            if (operand.type !== "Identifier") {
+                throw new Error(`Syntax Error: The operand of '${operator === TokenType.DOUBLE_PLUS ? "++" : "--"}' must be a variable (line ${this.previous().line}, column ${this.previous().column})`);
+            }
+
+            return {
+                type: "UpdateExpression",
+                operator,
+                argument: operand,
+                prefix: true
+            };
+        }
+
         if (this.match(TokenType.MINUS)) {
             const operator = this.previous().type;
             const right = this.parseUnary();
@@ -859,6 +854,22 @@ export class Parser {
                     property: prop.value!
                 };
 
+                continue;
+            }
+
+            if (this.match(TokenType.DOUBLE_PLUS, TokenType.DOUBLE_MINUS)) {
+                const operator = this.previous().type as TokenType.DOUBLE_PLUS | TokenType.DOUBLE_MINUS;
+
+                if (expr.type !== "Identifier") {
+                    throw new Error(`Syntax Error: The operand of '${operator === TokenType.DOUBLE_PLUS ? "++" : "--"}' must be a variable (line ${this.previous().line}, column ${this.previous().column})`);
+                }
+
+                expr = {
+                    type: "UpdateExpression",
+                    operator,
+                    argument: expr,
+                    prefix: false
+                };
                 continue;
             }
             

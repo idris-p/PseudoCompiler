@@ -508,6 +508,10 @@ export class Lexer {
                     this.advance()
                     return this.makeToken(TokenType.LESS_EQUAL, "<=")
                 }
+                if (this.peek() === ">") {
+                    this.advance()
+                    return this.makeToken(TokenType.NOT_EQUALS, "<>")
+                }
                 if (this.peek() === "-" && config.assignmentSyntax === "<-") {
                     this.advance()
                     return this.makeToken(TokenType.LEFT_ARROW, "<-")

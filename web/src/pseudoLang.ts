@@ -30,6 +30,8 @@ const STATIC_KEYWORDS = [
 ];
 
 const STATIC_FUNCTIONS = [
+    "index",
+
     "pow",
     "sqrt",
     "max",

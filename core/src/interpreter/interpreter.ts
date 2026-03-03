@@ -88,9 +88,14 @@ export class Interpreter {
     }
 
     private async executePrint(node: AST.PrintNode) {
-        const value = await this.evaluateExpression(node.expression);
-        console.log(value);
-        this.io.write(String(value));
+        const values = [];
+        for (const arg of node.args) {
+            values.push(String(await this.evaluateExpression(arg)));
+        }
+
+        const out = values.join(" ");
+        console.log(out);
+        this.io.write(out);
     }
 
     private async executeIf(node: AST.IfNode) {
@@ -411,10 +416,6 @@ export class Interpreter {
                 return node.value;
             case "String":
                 return node.value;
-            case "Concat": {
-                const parts = await Promise.all(node.parts.map(async (p) => String(await this.evaluateExpression(p))));
-                return parts.join(" ");
-            }
             case "Boolean":
                 return node.value;
             case "Identifier":
@@ -433,6 +434,8 @@ export class Interpreter {
                 return await this.evaluateIndexExpression(node);
             case "SliceExpression":
                 return await this.evaluateSliceExpression(node);
+            case "UpdateExpression":
+                return await this.evaluateUpdateExpression(node);
             case "CallExpression":
                 return await this.evaluateCallExpression(node);
             case "MemberExpression":
@@ -613,6 +616,26 @@ export class Interpreter {
             },
             },
 
+            ["index"]: {
+            params: [2],
+            allowMember: true,
+            displayName: () => "index",
+            fn: (finalArgs: any[]) => {
+                const str = finalArgs[0];
+                if (typeof str !== "string") {
+                    throw new Error(`Runtime Error: index() argument must be a string, not a '${typeof str}'`);
+                }
+                const index = finalArgs[1];
+                if (typeof index !== "number" || !Number.isInteger(index)) {
+                    throw new Error(`Runtime Error: index() argument must be an integer, not a '${typeof index}'`);
+                }
+                if (index < 0 || index >= str.length) {
+                    throw new Error(`Runtime Error: index() out of bounds for string of length ${str.length}`);
+                }
+                return str[index];
+            },
+            },
+
             [config.substringSyntax.toLowerCase()]: {
             params: [3],
             allowMember: true,
@@ -621,7 +644,7 @@ export class Interpreter {
                 const [str, start, end] = finalArgs;
 
                 if (typeof str !== "string") {
-                    throw new Error(`Runtime Error: ${config.substringSyntax}() first argument must be a string, not a '${typeof str}'`);
+                    throw new Error(`Runtime Error: ${config.substringSyntax}() argument must be a string, not a '${typeof str}'`);
                 }
                 return this.sliceSequence(str, start, end, 1);
             },
@@ -801,12 +824,18 @@ export class Interpreter {
             throw new Error(`Runtime Error: Unknown function '${nameLower}'`);
         }
 
-        const expectedUserArgs = receiver === undefined 
-            ? builtin.params[0] 
-            : builtin.params[0] - 1;
+        // Total parameters including receiver
+        const totalPassed = receiver === undefined
+            ? args.length
+            : args.length + 1;
 
-        if (!builtin.params.includes(args.length + (receiver === undefined ? 0 : 1))) {
-            const paramList = builtin.params.map(p => receiver === undefined ? p : p - 1).join(" or ");
+        // Validate total parameters
+        if (!builtin.params.includes(totalPassed)) {
+
+            const validUserCounts = builtin.params.map(p => receiver === undefined ? p : p - 1);
+
+            const paramList = validUserCounts.join(" or ");
+
             throw new Error(`Runtime Error: ${nameLower}() takes ${paramList} argument(s) but ${args.length} were given`);
         }
 
@@ -814,6 +843,38 @@ export class Interpreter {
         const finalArgs = receiver === undefined ? evaledArgs : [receiver, ...evaledArgs];
 
         return builtin.fn(finalArgs);
+    }
+
+    private async evaluateUpdateExpression(node: AST.UpdateExpressionNode): Promise<any> {
+        if (node.argument.type !== "Identifier") {
+            throw new Error("Runtime Error: Update expressions can only be applied to variables");
+        }
+
+        const name = node.argument.name;
+
+        if (name.toLowerCase() === "pi") {
+            throw new Error("Runtime Error: Cannot update constant 'pi'");
+        }
+
+        if (!this.environment.has(name)) {
+            throw new Error(`Runtime Error: Variable '${name}' is not defined`);
+        }
+
+        const current = this.environment.get(name);
+        if (typeof current !== "number" || !Number.isFinite(current)) {
+            throw new Error(`Runtime Error: Update expressions can only be applied to numbers, but '${name}' is a '${typeof current}'`);
+        }
+
+        const delta = node.operator === "DOUBLE_PLUS" ? 1 : -1;
+
+        if (node.prefix) {
+            this.environment.set(name, current + delta);
+            return current + delta;
+        }
+        else {
+            this.environment.set(name, current + delta);
+            return current;
+        }
     }
 
     private async evaluateCallExpression(node: AST.CallExpressionNode): Promise<any> {

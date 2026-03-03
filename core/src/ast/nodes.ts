@@ -1,3 +1,5 @@
+import { Token, TokenType } from "../lexer/token";
+
 export type Node =
     | StatementNode
     | ExpressionNode;
@@ -25,9 +27,10 @@ export type ExpressionNode =
     | SliceExpressionNode
     | NumberNode
     | StringNode
-    | ConcatNode
+    // | ConcatNode
     | BooleanNode
     | IdentifierNode
+    | UpdateExpressionNode
     | CallExpressionNode
     | MemberExpressionNode;
 
@@ -44,7 +47,7 @@ export type VariableAssignmentNode = {
 
 export type PrintNode = {
     type: "Print";
-    expression: ExpressionNode;
+    args: ExpressionNode[];
 };
 
 export type InputNode = {
@@ -148,10 +151,10 @@ export type StringNode = {
     value: string;
 };
 
-export type ConcatNode = {
-  type: "Concat";
-  parts: ExpressionNode[];
-};
+// export type ConcatNode = {
+//   type: "Concat";
+//   parts: ExpressionNode[];
+// };
 
 export type BooleanNode = {
     type: "Boolean";
@@ -173,6 +176,13 @@ export type ContinueNode = {
 
 export type BreakNode = {
     type: "Break";
+};
+
+export type UpdateExpressionNode = {
+    type: "UpdateExpression";
+    operator: TokenType.DOUBLE_PLUS | TokenType.DOUBLE_MINUS;
+    argument: ExpressionNode;
+    prefix: boolean; // true for prefix (e.g. ++i), false for postfix (e.g. i++)
 };
 
 export type CallExpressionNode = {
