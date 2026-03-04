@@ -92,7 +92,7 @@ function setTokenizer(monacoInstance: typeof Monaco) {
                 [new RegExp(`\\b(${FUNCTIONS.join("|")})\\b`), "type.identifier"],
 
                 // Booleans
-                [new RegExp(`\\b(${BOOLEANS.join("|")})\\b`), "type.boolean"],
+                [new RegExp(`\\b(${BOOLEANS.join("|")})\\b`), "keyword"],
 
                 // Strings (stateful, supports escapes + highlight them)
                 [/"/, "string.quote", "@string_double"],
@@ -105,7 +105,7 @@ function setTokenizer(monacoInstance: typeof Monaco) {
                 [new RegExp(`\\b(${CONSTANTS.join("|")})\\b`), "number"],
 
                 // Identifiers
-                [/[a-zA-Z_]\w*/, "identifier"],
+                [/[a-zA-Z_]\w*/, "variable"],
 
                 // Operators
                 [/==|!=|<=|>=|<|>/, "operator"],
