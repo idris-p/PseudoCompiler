@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
+import type { TerminalLine } from "../App";
 
-export default function Terminal( { terminalOutput, setTerminalOutput, pendingInput, setPendingInput }: { terminalOutput: string[], setTerminalOutput: React.Dispatch<React.SetStateAction<string[]>>, pendingInput: {prompt?: string; resolve: (value: string) => void;} | null, setPendingInput: (pendingInput: {prompt?: string; resolve: (value: string) => void;} | null) => void } ) {
+export default function Terminal( { terminalOutput, setTerminalOutput, pendingInput, setPendingInput }: { terminalOutput: TerminalLine[], setTerminalOutput: React.Dispatch<React.SetStateAction<TerminalLine[]>>, pendingInput: {prompt?: string; resolve: (value: string) => void;} | null, setPendingInput: (pendingInput: {prompt?: string; resolve: (value: string) => void;} | null) => void } ) {
     const terminalRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLDivElement>(null);
     const [currentInput, setCurrentInput] = useState("");
@@ -21,7 +22,7 @@ export default function Terminal( { terminalOutput, setTerminalOutput, pendingIn
         const prompt = pendingInput.prompt ?? "";
         const value = currentInput;
 
-        setTerminalOutput(prev => [...prev, `${prompt}${value}`]);
+        setTerminalOutput(prev => [...prev, { text: `${prompt}${value}`, type: "normal" }]);
 
         pendingInput.resolve(value);
 
@@ -59,9 +60,13 @@ export default function Terminal( { terminalOutput, setTerminalOutput, pendingIn
             {terminalOutput.map((line, i) => (
                 <div
                     key={i}
-                    className="text-left text-black dark:text-gray-100 ml-2 whitespace-pre-wrap"
+                    className={`ml-2 text-left whitespace-pre-wrap ${
+            line.type === "error"
+                ? "text-red-600 dark:text-red-400"
+                : "text-black dark:text-gray-100"
+        }`}
                 >
-                    {line}
+                    {line.text}
                 </div>
             ))}
 

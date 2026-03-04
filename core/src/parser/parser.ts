@@ -546,10 +546,10 @@ export class Parser {
         else {
             // Python-style for loop: for i = 0 to 10 { ... }
             const variable = this.consume(TokenType.IDENTIFIER, "Syntax Error: Expected variable name in for loop at line " + this.peek().line + ", column " + this.peek().column).value!;
-            this.consume(this.getAssignmentTokenType(), "Syntax Error: Expected assignment operator after variable name in for loop at line " + this.peek().line + ", column " + this.peek().column);
+            this.consume(this.getAssignmentTokenType(), "Syntax Error: Expected assignment operator after variable name in for loop at line " + this.peek().line + ", column " + (this.peek().column - this.peek().value!.length));
 
             const start = this.parseExpression();
-            this.consume(TokenType.TO, "Syntax Error: Expected 'to' in for loop after start expression at line " + this.peek().line + ", column " + this.peek().column);
+            this.consume(TokenType.TO, "Syntax Error: Expected 'to' in for loop after start expression at line " + this.peek().line + ", column " + (this.peek().column - this.peek().value!.length));
 
             const end = this.parseExpression();
 
@@ -656,7 +656,7 @@ export class Parser {
 
     private parseContinueStatement(): AST.ContinueNode {
         if (!this.isInsideLoop()) {
-            throw new Error(`Syntax Error: 'continue' can only be used inside a loop (line ${this.previous().line}, column ${this.previous().column})`);
+            throw new Error(`Syntax Error: '${config.continueSyntax}' used outside of a loop at line ${this.previous().line}, column ${this.previous().column - config.continueSyntax.length}`);
         }
         this.consumeStatementTerminator();
         return { type: "Continue" };
@@ -664,7 +664,7 @@ export class Parser {
 
     private parseBreakStatement(): AST.BreakNode {
         if (!this.isInsideLoop() && !this.isInsideSwitch()) {
-            throw new Error(`Syntax Error: 'break' can only be used inside a loop or switch (line ${this.previous().line}, column ${this.previous().column})`);
+            throw new Error(`Syntax Error: '${config.breakSyntax}' used outside of a loop or switch at line ${this.previous().line}, column ${this.previous().column - config.breakSyntax.length}`);
         }
         this.consumeStatementTerminator();
         return { type: "Break" };
@@ -938,13 +938,14 @@ export class Parser {
 
     private parsePrimary(): AST.ExpressionNode {
         if (this.match(TokenType.INPUT)) {
-            this.consume(TokenType.LEFT_PAREN, "Syntax Error: Expected '(' after 'input' at line " + this.peek().line + ", column " + this.peek().column);
+            console.log(this.peek());
+            this.consume(TokenType.LEFT_PAREN, `Syntax Error: Expected '(' after '${config.inputSyntax}' at line ${this.peek().line}, column ${this.peek().column - this.peek().value!.length - 2}`);
 
             let prompt: AST.ExpressionNode | undefined;
             if (!this.checkType(TokenType.RIGHT_PAREN)) {
                 prompt = this.parseExpression();
             }
-            this.consume(TokenType.RIGHT_PAREN, "Syntax Error: Expected ')' after input prompt expression at line " + this.peek().line + ", column " + this.peek().column);
+            this.consume(TokenType.RIGHT_PAREN, `Syntax Error: Expected ')' after '${config.inputSyntax}' at line ${this.peek().line}, column ${this.peek().column}`);
 
             return {
                 type: "Input",

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { Dispatch } from "react";
 import Split from "react-split";
+import type { TerminalLine } from "../App";
 import CodeEditor from "./CodeEditor";
 import Terminal from "./Terminal";
 import ConfigMenu from "./ConfigMenu";
@@ -18,8 +19,8 @@ export default function Container({
     showConfig: boolean,
     code: string,
     setCode: React.Dispatch<React.SetStateAction<string>>,
-    terminalOutput: string[],
-    setTerminalOutput: React.Dispatch<React.SetStateAction<string[]>>,
+    terminalOutput: TerminalLine[],
+    setTerminalOutput: React.Dispatch<React.SetStateAction<TerminalLine[]>>,
     pendingInput: {prompt?: string; resolve: (value: string) => void;} | null,
     setPendingInput: Dispatch<any>
 }) {

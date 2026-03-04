@@ -1,8 +1,9 @@
 import { FaPlay } from "react-icons/fa";
 import { runPseudoCode } from "../../../core/src/index.js";
 import type { RuntimeIO } from "../../../core/src/interpreter/interpreter.js";
+import type { TerminalLine } from "../App";
 
-export default function PlayButton( { code, setTerminalOutput, setPendingInput }: { code: string, setTerminalOutput: React.Dispatch<React.SetStateAction<string[]>>; setPendingInput: (pendingInput: {prompt?: string; resolve: (value: string) => void;} | null) => void } ) {
+export default function PlayButton( { code, setTerminalOutput, setPendingInput }: { code: string, setTerminalOutput: React.Dispatch<React.SetStateAction<TerminalLine[]>>; setPendingInput: (pendingInput: {prompt?: string; resolve: (value: string) => void;} | null) => void } ) {
 
     const handleRun = async () => {
         setTerminalOutput([]);
@@ -10,7 +11,7 @@ export default function PlayButton( { code, setTerminalOutput, setPendingInput }
         const io: RuntimeIO = {
             write: (text: string) => {
                 // Stream output line by line
-                setTerminalOutput(prev => [...prev, text]);
+                setTerminalOutput(prev => [...prev, { text, type: "normal" }]);
             },
             read: (prompt?: string) => {
                 return new Promise<string>((resolve) => {
@@ -28,7 +29,7 @@ export default function PlayButton( { code, setTerminalOutput, setPendingInput }
             console.error("Error running pseudo code:", error);
             setTerminalOutput(prev => [
                 ...prev,
-                (error as Error).message
+                { text: (error as Error).message, type: "error" }
             ]);
         }
     }

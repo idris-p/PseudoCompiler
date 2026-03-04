@@ -1,9 +1,10 @@
 import type { Dispatch, SetStateAction } from 'react'
+import type { TerminalLine } from '../App'
 import PlayButton from './PlayButton'
 import ConfigButton from './ConfigButton'
 import DoneButton from './DoneButton'
 
-export default function SideButtons({ showConfig, setShowConfig, code, setTerminalOutput, setPendingInput }: { showConfig: boolean, setShowConfig: (show: boolean) => void, code: string, setTerminalOutput: Dispatch<SetStateAction<string[]>>, setPendingInput: (pendingInput: {prompt?: string; resolve: (value: string) => void;} | null) => void }) {
+export default function SideButtons({ showConfig, setShowConfig, code, setTerminalOutput, setPendingInput }: { showConfig: boolean, setShowConfig: (show: boolean) => void, code: string, setTerminalOutput: Dispatch<SetStateAction<TerminalLine[]>>, setPendingInput: (pendingInput: {prompt?: string; resolve: (value: string) => void;} | null) => void }) {
     return (
         <div>
             { !showConfig && (

@@ -61,7 +61,7 @@ export class Lexer {
     private expectedIndent = false
 
     constructor(sourceCode: string, codeStyle: CodeStyle) {
-        this.sourceCode = sourceCode
+        this.sourceCode = sourceCode.replace(/\r\n?/g, "\n");
         this.codeStyle = codeStyle
     }
 
@@ -78,7 +78,7 @@ export class Lexer {
             }
 
             // Newline
-            if (char === '\n' || char === '\r') {
+            if (char === '\n') {
                 this.advanceLine();
 
                 if (this.isCommentLine()) {

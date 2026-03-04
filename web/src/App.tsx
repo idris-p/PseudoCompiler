@@ -3,10 +3,15 @@ import Container from './components/Container'
 import SideButtons from './components/SideButtons'
 import { config } from '../../core/src/loader';
 
+export type TerminalLine = {
+    text: string;
+    type?: "normal" | "error";
+};
+
 function App() {
   const [showConfig, setShowConfig] = useState(false)
   const [code, setCode] = useState<string>(localStorage.getItem("pseudoCode") || config.commentSyntax + " Write some pseudocode here\n\n");
-  const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
+  const [terminalOutput, setTerminalOutput] = useState<TerminalLine[]>([]);
   const [pendingInput, setPendingInput] = useState<{prompt?: string; resolve: (value: string) => void;} | null>(null);
 
   return (
