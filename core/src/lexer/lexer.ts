@@ -1,5 +1,6 @@
 import { TokenType, type Token } from "./token.js"
 import { CodeStyle } from "../CodeStyle.js"
+import { BLOCK_OPENERS } from "../BlockOpeners.js";
 import { config } from "../loader.js";
 
 function getKeywords(): Record<string, TokenType> {
@@ -37,18 +38,6 @@ function getKeywords(): Record<string, TokenType> {
 }
 
 // const KEYWORDS: Record<string, TokenType> = getKeywords();
-
-const BLOCK_OPENERS: Set<TokenType> = new Set([
-    TokenType.IF,
-    TokenType.ELSE_IF,
-    TokenType.ELSE,
-    TokenType.SWITCH,
-    TokenType.CASE,
-    TokenType.DEFAULT,
-    TokenType.FOR,
-    TokenType.WHILE,
-    TokenType.DO
-])
 
 // Lexer Class - converts source code into tokens
 export class Lexer {

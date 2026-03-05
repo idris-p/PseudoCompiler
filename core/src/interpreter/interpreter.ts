@@ -269,6 +269,7 @@ export class Interpreter {
     }
 
     private async executeDoWhile(node: AST.DoWhileNode) {
+        let iter = 0;
         while (true) {
             try {
                 for (const stmt of node.body) {
@@ -285,6 +286,11 @@ export class Interpreter {
 
             if (!(await this.evaluateExpression(node.condition))) {
                 break;
+            }
+
+            iter++;
+            if (iter % 200 === 0) {
+                await this.yieldToBrowser();
             }
         }
     }

@@ -1,5 +1,6 @@
 import type Monaco from "monaco-editor";
 import { config } from "../../core/src/loader.js";
+import { BLOCK_OPENERS_STRINGS, BLOCK_CLOSERS_STRINGS } from "../../core/src/BlockOpeners.js";
 
 const STATIC_KEYWORDS = [
     "if",
@@ -154,6 +155,18 @@ function setLanguageConfig(monacoInstance: typeof Monaco) {
             { open: `"`, close: `"` },
             { open: "'", close: "'" },
         ],
+        indentationRules: {
+            increaseIndentPattern: new RegExp(`^\\s*(${Array.from(BLOCK_OPENERS_STRINGS).join("|")}).*$`),
+            decreaseIndentPattern: new RegExp(`^\\s*(${Array.from(BLOCK_CLOSERS_STRINGS).join("|")}).*$`),
+        },
+        onEnterRules: [
+            {
+                beforeText: new RegExp(`^\\s*(${Array.from(BLOCK_OPENERS_STRINGS).join("|")}).*$`),
+                action: {
+                    indentAction: monacoInstance.languages.IndentAction.Indent
+                }
+            }
+        ]
     });
 }
 
