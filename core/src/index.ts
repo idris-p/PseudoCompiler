@@ -18,8 +18,8 @@ export async function runPseudoCode(source: string, io: RuntimeIO) {
     const parser = new Parser(tokens, config.codeStyle)
     const ast = parser.parse()
 
-    console.log("AST:")
-    console.log(JSON.stringify(ast, null, 2))
+    // console.log("AST:")
+    // console.log(JSON.stringify(ast, null, 2))
 
     const interpreter = new Interpreter(io)
     await interpreter.run(ast)

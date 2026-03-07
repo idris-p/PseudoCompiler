@@ -101,6 +101,94 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
             </select>
 
             <h2 className="text-xl font-bold mb-2 mt-4">
+                Data Types
+            </h2>
+
+            <label className="text-lg block mb-2 font-semibold">
+                Integer Keyword
+            </label>
+            <select
+                className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
+                defaultValue={config.intSyntax}
+                onChange={(e) => {
+                    config.intSyntax = e.target.value as typeof config.intSyntax;
+                    persistConfig();
+                    if (monaco) refreshPseudoLanguage(monaco);
+                }}
+            >
+                <option value="int">int</option>
+                <option value="integer">integer</option>
+            </select>
+
+            <label className="text-lg block mb-2 font-semibold">
+                Float Keyword
+            </label>
+            <select
+                className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
+                defaultValue={config.floatSyntax}
+                onChange={(e) => {
+                    config.floatSyntax = e.target.value as typeof config.floatSyntax;
+                    persistConfig();
+                    if (monaco) refreshPseudoLanguage(monaco);
+                }}
+            >
+                <option value="float">float</option>
+                <option value="decimal">decimal</option>
+                <option value="real">real</option>
+            </select>
+
+            <label className="text-lg block mb-2 font-semibold">
+                Character Keyword
+            </label>
+            <select
+                className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
+                defaultValue={config.charSyntax}
+                onChange={(e) => {
+                    config.charSyntax = e.target.value as typeof config.charSyntax;
+                    persistConfig();
+                    if (monaco) refreshPseudoLanguage(monaco);
+                }}
+            >
+                <option value="char">char</option>
+                <option value="character">character</option>
+            </select>
+
+            <label className="text-lg block mb-2 font-semibold">
+                String Keyword
+            </label>
+            <select
+                className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
+                defaultValue={config.stringSyntax}
+                onChange={(e) => {
+                    config.stringSyntax = e.target.value as typeof config.stringSyntax;
+                    persistConfig();
+                    if (monaco) refreshPseudoLanguage(monaco);
+                }}
+            >
+                <option value="str">str</option>
+                <option value="string">string</option>
+                <option value="text">text</option>
+            </select>
+
+            <label className="text-lg block mb-2 font-semibold">
+                Boolean Keyword
+            </label>
+            <select
+                className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
+                defaultValue={config.boolSyntax}
+                onChange={(e) => {
+                    config.boolSyntax = e.target.value as typeof config.boolSyntax;
+                    persistConfig();
+                    if (monaco) refreshPseudoLanguage(monaco);
+                }}
+            >
+                <option value="bool">bool</option>
+                <option value="boolean">boolean</option>
+                <option value="flag">flag</option>
+            </select>
+
+
+            <h2 className="text-xl font-bold mb-2 mt-4">
                 Input Statement
             </h2>
 
@@ -138,18 +226,21 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 Switch-Case
             </h2>
 
-            <KeywordField
-                label="Switch Keyword"
-                value={config.switchSyntax}
-                placeholder="switch"
-                onValidChange={(value) => {
-                    config.switchSyntax = value;
+            <label className="text-lg block mb-2 font-semibold">
+                Switch Keyword
+            </label>
+            <select
+                className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
+                defaultValue={config.switchSyntax}
+                onChange={(e) => {
+                    config.switchSyntax = e.target.value as typeof config.switchSyntax;
                     persistConfig();
-                }}
-                onAfterChange={() => {
                     if (monaco) refreshPseudoLanguage(monaco);
                 }}
-            />
+            >
+                <option value="switch">switch</option>
+                <option value="match">match</option>
+            </select>
 
             <label className="text-md block mb-4 font-semibold">
                 Switch Fallthrough

@@ -3,11 +3,6 @@ import { config } from "../../core/src/loader.js";
 import { BLOCK_OPENERS_STRINGS, BLOCK_CLOSERS_STRINGS } from "../../core/src/BlockOpeners.js";
 
 const STATIC_KEYWORDS = [
-    "int",
-    "float",
-    "char",
-    "string",
-    "bool",
     "if",
     "then",
     "elseif",
@@ -81,7 +76,7 @@ function escapeRegex(str: string): string {
 /* ---------------- Tokenizer ---------------- */
 
 function setTokenizer(monacoInstance: typeof Monaco) {
-    const KEYWORDS = [...STATIC_KEYWORDS, config.switchSyntax, "end" + config.switchSyntax, config.breakSyntax, config.continueSyntax, config.passSyntax];
+    const KEYWORDS = [...STATIC_KEYWORDS, config.intSyntax, config.floatSyntax, config.charSyntax, config.stringSyntax, config.boolSyntax, config.switchSyntax, "end" + config.switchSyntax, config.breakSyntax, config.continueSyntax, config.passSyntax];
     const FUNCTIONS = [...STATIC_FUNCTIONS, config.inputSyntax, config.printSyntax, config.lengthSyntax, config.substringSyntax];
 
     monacoInstance.languages.setMonarchTokensProvider("pseudo", {
@@ -212,7 +207,7 @@ function registerCompletionProvider(monacoInstance: typeof Monaco) {
                     endColumn: word.endColumn,
                 };
 
-                const KEYWORDS = [...STATIC_KEYWORDS, config.switchSyntax, "end" + config.switchSyntax, config.breakSyntax, config.continueSyntax, config.passSyntax];
+                const KEYWORDS = [...STATIC_KEYWORDS, config.intSyntax, config.floatSyntax, config.charSyntax, config.stringSyntax, config.boolSyntax, config.switchSyntax, "end" + config.switchSyntax, config.breakSyntax, config.continueSyntax, config.passSyntax];
 
                 const functionSuggestions = FUNCTIONS.map((fn) => {
                     // Special-case: input() with cursor inside brackets

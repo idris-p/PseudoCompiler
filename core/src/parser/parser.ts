@@ -329,7 +329,7 @@ export class Parser {
         const typeToken = this.advance();
         const declaredType = this.parseDeclaredType(typeToken);
 
-        const name = this.consume(TokenType.IDENTIFIER, "Expected variable name.");
+        const name = this.consume(TokenType.IDENTIFIER, "Syntax Error: Expected variable name after type declaration at line " + this.peek().line + ", column " + this.peek().column);
 
         let initializer: AST.ExpressionNode | undefined;
 
@@ -354,7 +354,7 @@ export class Parser {
     }
 
     private parseAssignment(): AST.StatementNode {
-        const name = this.consume(TokenType.IDENTIFIER, "Expected variable name.");
+        const name = this.consume(TokenType.IDENTIFIER, "Syntax Error: Expected variable assignment at line " + this.peek().line + ", column " + (this.peek().column - this.peek().value!.length));
         
         const identifier: AST.ExpressionNode = {
             type: "Identifier",
@@ -363,20 +363,16 @@ export class Parser {
 
         // ++ / --
         if (this.match(TokenType.DOUBLE_PLUS, TokenType.DOUBLE_MINUS)) {
-            const operatorToken = this.previous().type;
-            const operator = operatorToken === TokenType.DOUBLE_PLUS
-                ? TokenType.PLUS
-                : TokenType.MINUS;
+            const operator = this.previous().type as TokenType.DOUBLE_PLUS | TokenType.DOUBLE_MINUS;
 
             return {
-                type: "VariableAssignment",
-                name: name.value!,
-                value: {
-                    type: "BinaryExpression",
-                    operator,
-                    left: identifier,
-                    right: { type: "Number", value: 1 }
-                }
+                type: "UpdateStatement",
+                operator,
+                argument: {
+                    type: "Identifier",
+                    name: name.value!
+                },
+                prefix: false
             };
         }
 
@@ -421,7 +417,7 @@ export class Parser {
             };
         }
 
-        throw new Error("Expected '" + config.assignmentSyntax + "' at line " + this.peek().line + ", column " + (this.peek().column - this.peek().value!.length));
+        throw new Error("Syntax Error: Expected '" + config.assignmentSyntax + "' at line " + this.peek().line + ", column " + (this.peek().column - this.peek().value!.length));
     }
 
     private parsePrintStatement(): AST.PrintNode {
@@ -557,7 +553,13 @@ export class Parser {
             // C-style for loop: for (initializer; condition; update) { ... }
             let initializer: AST.StatementNode | undefined;
             if (!this.checkType(TokenType.SEMI_COLON)) {
-                initializer = this.parseAssignment();
+                if (this.checkType(TokenType.INT_TYPE)) {
+                    this.advance();
+                }
+                else if (this.isTypeToken(this.peek().type)) {
+                    throw new Error(`Syntax Error: Unexpected type '${this.peek().value}' in for loop initialiser at line ${this.peek().line}, column ${this.peek().column - this.peek().value!.length}`);
+                }
+                initializer = this.parseAssignment(); // May need to handle variable declarations here as well
                 if (!config.forInclusive[0] && initializer.type === "VariableAssignment") {
                     initializer.value = {
                         type: "BinaryExpression",
@@ -595,7 +597,13 @@ export class Parser {
         }
         else {
             // Python-style for loop: for i = 0 to 10 { ... }
-            const variable = this.consume(TokenType.IDENTIFIER, "Syntax Error: Expected variable name in for loop at line " + this.peek().line + ", column " + this.peek().column).value!;
+            if (this.checkType(TokenType.INT_TYPE)) {
+                this.advance();
+            }
+            else if (this.isTypeToken(this.peek().type)) {
+                throw new Error(`Syntax Error: Unexpected type '${this.peek().value}' in for loop initialiser at line ${this.peek().line}, column ${this.peek().column - this.peek().value!.length}`);
+            }
+            const variable = this.consume(TokenType.IDENTIFIER, "Syntax Error: Expected variable name in for loop at line " + this.peek().line + ", column " + (this.peek().column - this.peek().value!.length)).value!;
             this.consume(this.getAssignmentTokenType(), "Syntax Error: Expected assignment operator after variable name in for loop at line " + this.peek().line + ", column " + (this.peek().column - this.peek().value!.length));
 
             const start = this.parseExpression();
@@ -726,29 +734,22 @@ export class Parser {
             "Syntax Error: Expected '++' or '--'"
         );
 
-        const operatorToken = this.previous().type;
+        const operator = this.previous().type as TokenType.DOUBLE_PLUS | TokenType.DOUBLE_MINUS;
         const name = this.consume(
             TokenType.IDENTIFIER,
-            `Syntax Error: Expected variable name after '${operatorToken === TokenType.DOUBLE_PLUS ? "++" : "--"}' at line ${this.peek().line}, column ${this.peek().column}`
+            `Syntax Error: Expected variable name after '${operator === TokenType.DOUBLE_PLUS ? "++" : "--"}' at line ${this.peek().line}, column ${this.peek().column}`
         );
 
         this.consumeStatementTerminator();
 
         return {
-            type: "VariableAssignment",
-            name: name.value!,
-            value: {
-                type: "BinaryExpression",
-                operator: operatorToken === TokenType.DOUBLE_PLUS ? TokenType.PLUS : TokenType.MINUS,
-                left: {
-                    type: "Identifier",
-                    name: name.value!
-                },
-                right: {
-                    type: "Number",
-                    value: 1
-                }
-            }
+            type: "UpdateStatement",
+            operator,
+            argument: {
+                type: "Identifier",
+                name: name.value!
+            },
+            prefix: true
         };
     }
     

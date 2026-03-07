@@ -5,11 +5,11 @@ import { config } from "../loader.js";
 
 function getKeywords(): Record<string, TokenType> {
     return {
-        "int": TokenType.INT_TYPE,
-        "float": TokenType.FLOAT_TYPE,
-        "char": TokenType.CHAR_TYPE,
-        "string": TokenType.STRING_TYPE,
-        "bool": TokenType.BOOL_TYPE,
+        [config.intSyntax]: TokenType.INT_TYPE,
+        [config.floatSyntax]: TokenType.FLOAT_TYPE,
+        [config.charSyntax]: TokenType.CHAR_TYPE,
+        [config.stringSyntax]: TokenType.STRING_TYPE,
+        [config.boolSyntax]: TokenType.BOOL_TYPE,
         "if": TokenType.IF,
         "then": TokenType.THEN,
         "elif": TokenType.ELIF,
@@ -251,16 +251,16 @@ export class Lexer {
 
         if (this.expectedIndent) {
             if (indentLevel <= prevIndentLevel) {
-                throw new Error(`Formatting Error: Expected an indent at line ${this.line}, column ${this.column}`);
+                throw new Error(`Formatting Error: Expected an indent at line ${this.line}, column ${this.column - value.length}`);
             }
             else if (indentLevel - prevIndentLevel > 1) {
-                throw new Error(`Formatting Error: Indentation too deep at line ${this.line}, column ${this.column}`);
+                throw new Error(`Formatting Error: Indentation too deep at line ${this.line}, column ${this.column - value.length}. Expected indent level ${prevIndentLevel + 1} but got ${indentLevel}`);
             }
             this.expectedIndent = false;
         }
         else {
             if (indentLevel > prevIndentLevel) {
-                throw new Error(`Formatting Error: Unexpected indent at line ${this.line}, column ${this.column}`);
+                throw new Error(`Formatting Error: Unexpected indent at line ${this.line}, column ${this.column - value.length}`);
             }
         }
         return result;

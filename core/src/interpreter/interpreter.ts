@@ -1,5 +1,6 @@
 import { config } from "../loader.js";
 import * as AST from "../ast/nodes.js";
+import { TokenType } from "../lexer/token.js";
 
 export type ExecutionResult = {
     output: any[];
@@ -51,6 +52,9 @@ export class Interpreter {
             case "VariableAssignment":
                 await this.executeAssignment(node);
                 break;
+            case "UpdateStatement":
+                await this.executeUpdateStatement(node);
+                break;
             case "Print":
                 await this.executePrint(node);
                 break;
@@ -89,7 +93,7 @@ export class Interpreter {
 
     private coerceToType(value: any, declaredType: AST.PseudoType, variableName: string): any {
         switch (declaredType) {
-            case "int": {
+            case config.intSyntax: {
                 if (typeof value === "number" && Number.isInteger(value)) return value;
 
                 if (typeof value === "string" && /^-?\d+$/.test(value.trim())) {
@@ -99,25 +103,35 @@ export class Interpreter {
                 throw new Error(`Type Error: Cannot assign value '${value}' to int variable '${variableName}'`);
             }
 
-            case "float": {
+            case config.floatSyntax: {
                 if (typeof value === "number") return value;
 
-                if (typeof value === "string" && !Number.isNaN(Number(value.trim()))) {
-                    return Number(value.trim());
+                if (typeof value === "string") {
+                    const trimmed = value.trim();
+
+                    if (trimmed.length === 0) {
+                        throw new Error(`Type Error: Cannot assign empty string to float variable '${variableName}'`);
+                    }
+
+                    const num = Number(trimmed);
+
+                    if (!Number.isNaN(num)) {
+                        return num;
+                    }
                 }
 
                 throw new Error(`Type Error: Cannot assign value '${value}' to float variable '${variableName}'`);
             }
 
-            case "char": {
+            case config.charSyntax: {
                 if (typeof value === "string" && value.length === 1) return value;
                 throw new Error(`Type Error: Cannot assign value '${value}' to char variable '${variableName}'`);
             }
 
-            case "string":
+            case config.stringSyntax:
                 return String(value);
 
-            case "bool": {
+            case config.boolSyntax: {
                 if (typeof value === "boolean") return value;
 
                 if (typeof value === "string") {
@@ -183,6 +197,29 @@ export class Interpreter {
         // Normal inferred variable
         this.environment.set(node.name, {
             value: rawValue,
+            initialized: true
+        });
+    }
+
+    private async executeUpdateStatement(node: AST.UpdateStatementNode) {
+        const name = node.argument.name;
+
+        if (!this.environment.has(name)) {
+            throw new Error(`Runtime Error: Variable '${name}' is not defined`);
+        }
+
+        const currentVar = this.environment.get(name)!;
+        const currentValue = currentVar.value;
+
+        if (!Number.isInteger(currentValue)) {
+            throw new Error(`Runtime Error: '${node.operator === TokenType.DOUBLE_PLUS ? "++" : "--"}' can only be used on integers, but '${name}' is ${typeof currentValue}`);
+        }
+
+        const newValue = node.operator === TokenType.DOUBLE_PLUS ? currentValue + 1 : currentValue - 1;
+
+        this.environment.set(name, {
+            value: newValue,
+            declaredType: currentVar.declaredType,
             initialized: true
         });
     }

@@ -10,6 +10,7 @@ export type StatementNode =
     | ProgramNode
     | VariableDeclarationNode
     | VariableAssignmentNode
+    | UpdateStatementNode
     | PrintNode
     | InputStatementNode
     | IfNode
@@ -52,6 +53,13 @@ export type VariableAssignmentNode = {
     type: "VariableAssignment";
     name: string;
     value: ExpressionNode;
+};
+
+export interface UpdateStatementNode {
+    type: "UpdateStatement";
+    operator: TokenType.DOUBLE_PLUS | TokenType.DOUBLE_MINUS;
+    argument: IdentifierNode;
+    prefix: boolean;
 };
 
 export type PrintNode = {
