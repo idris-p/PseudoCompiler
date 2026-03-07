@@ -5,6 +5,7 @@ export enum TokenType {
     IF = "IF",
     THEN = "THEN",
     ELSE_IF = "ELSE_IF",
+    ELIF = "ELIF",
     ELSE = "ELSE",
     END_IF = "END_IF",
 
@@ -37,6 +38,13 @@ export enum TokenType {
     NUMBER = "NUMBER",
     STRING = "STRING",
     BOOLEAN = "BOOLEAN",
+
+    // Types
+    INT_TYPE = "INT_TYPE",
+    FLOAT_TYPE = "FLOAT_TYPE",
+    CHAR_TYPE = "CHAR_TYPE",
+    STRING_TYPE = "STRING_TYPE",
+    BOOL_TYPE = "BOOL_TYPE",
 
     // Operators
     EQUALS = "EQUALS",

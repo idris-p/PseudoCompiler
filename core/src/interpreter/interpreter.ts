@@ -3,7 +3,7 @@ import * as AST from "../ast/nodes.js";
 
 export type ExecutionResult = {
     output: any[];
-    environment: Map<string, any>;
+    environment: Map<string, RuntimeVariable>;
 }
 
 class BreakSignal {}
@@ -14,10 +14,16 @@ export type RuntimeIO = {
     read: (prompt?: string) => Promise<string>;     // request user input (pauses program)
 };
 
+type RuntimeVariable = {
+    value: any;
+    declaredType?: AST.PseudoType;
+    initialized: boolean;
+};
+
 
 // Interpreter Class - executes the AST
 export class Interpreter {
-    private environment: Map<string, any> = new Map();
+    private environment: Map<string, RuntimeVariable> = new Map();
     private io: RuntimeIO;
 
     constructor(io: RuntimeIO) {
@@ -38,6 +44,9 @@ export class Interpreter {
                 for (const stmt of node.body) {
                     await this.executeStatement(stmt);
                 }
+                break;
+            case "VariableDeclaration":
+                await this.executeDeclaration(node);
                 break;
             case "VariableAssignment":
                 await this.executeAssignment(node);
@@ -78,13 +87,104 @@ export class Interpreter {
         }
     }
 
-    private async executeAssignment(node: AST.VariableAssignmentNode) {
-        if (node.name.toLowerCase() === "pi") {
-            throw new Error("Runtime Error: Cannot assign to constant 'pi'");
+    private coerceToType(value: any, declaredType: AST.PseudoType, variableName: string): any {
+        switch (declaredType) {
+            case "int": {
+                if (typeof value === "number" && Number.isInteger(value)) return value;
+
+                if (typeof value === "string" && /^-?\d+$/.test(value.trim())) {
+                    return parseInt(value.trim(), 10);
+                }
+
+                throw new Error(`Type Error: Cannot assign value '${value}' to int variable '${variableName}'`);
+            }
+
+            case "float": {
+                if (typeof value === "number") return value;
+
+                if (typeof value === "string" && !Number.isNaN(Number(value.trim()))) {
+                    return Number(value.trim());
+                }
+
+                throw new Error(`Type Error: Cannot assign value '${value}' to float variable '${variableName}'`);
+            }
+
+            case "char": {
+                if (typeof value === "string" && value.length === 1) return value;
+                throw new Error(`Type Error: Cannot assign value '${value}' to char variable '${variableName}'`);
+            }
+
+            case "string":
+                return String(value);
+
+            case "bool": {
+                if (typeof value === "boolean") return value;
+
+                if (typeof value === "string") {
+                    const lower = value.trim().toLowerCase();
+                    if (lower === "true") return true;
+                    if (lower === "false") return false;
+                }
+
+                throw new Error(`Type Error: Cannot assign value '${value}' to bool variable '${variableName}'`);
+            }
+
+            default:
+                return value;
+        }
+    }
+
+    private async executeDeclaration(node: AST.VariableDeclarationNode) {
+        if (this.environment.has(node.name)) {
+            throw new Error(`Runtime Error: Variable '${node.name}' is already declared`);
         }
 
-        const value = await this.evaluateExpression(node.value);
-        this.environment.set(node.name, value);
+        if (node.initializer) {
+            const rawValue = await this.evaluateExpression(node.initializer);
+            const coercedValue = this.coerceToType(rawValue, node.declaredType, node.name);
+
+            this.environment.set(node.name, {
+                value: coercedValue,
+                declaredType: node.declaredType,
+                initialized: true
+            });
+        }
+        else {
+            this.environment.set(node.name, {
+                value: undefined,
+                declaredType: node.declaredType,
+                initialized: false
+            });
+        }
+    }
+
+    private async executeAssignment(node: AST.VariableAssignmentNode) {
+        const rawValue =  await this.evaluateExpression(node.value);
+        const existing = this.environment.get(node.name);
+
+        // Explicit type in this statement
+        if (existing) {
+            if (existing.declaredType) {
+                const coercedValue = this.coerceToType(rawValue, existing.declaredType, node.name);
+                this.environment.set(node.name, {
+                    value: coercedValue,
+                    declaredType: existing.declaredType,
+                    initialized: true
+                });
+            } else {
+                this.environment.set(node.name, {
+                    value: rawValue,
+                    initialized: true
+                });
+            }
+            return;
+        }
+
+        // Normal inferred variable
+        this.environment.set(node.name, {
+            value: rawValue,
+            initialized: true
+        });
     }
 
     private async executePrint(node: AST.PrintNode) {
@@ -168,7 +268,11 @@ export class Interpreter {
             }
 
             // Set initial loop variable
-            this.environment.set(variable, start);
+            this.environment.set(variable, {
+                value: start,
+                declaredType: "int",
+                initialized: true
+            });
 
             const withinBounds = (i: number) => {
                 if (step > 0) {
@@ -180,7 +284,7 @@ export class Interpreter {
 
             let iter = 0;
 
-            while (withinBounds(this.environment.get(variable))) {
+            while (withinBounds(this.environment.get(variable)!.value)) {
                 try {
                     for (const stmt of node.body) {
                         await this.executeStatement(stmt);
@@ -197,8 +301,8 @@ export class Interpreter {
                 }
 
                 // i = i + step
-                const current = this.environment.get(variable);
-                this.environment.set(variable, current + step);
+                const current = this.environment.get(variable)!.value;
+                this.environment.set(variable, { value: current + step, declaredType: "int", initialized: true });
 
                 iter++;
                 if (iter % 200 === 0) {
@@ -296,6 +400,7 @@ export class Interpreter {
     }
 
     private async executeDoUntil(node: AST.DoUntilNode) {
+        let iter = 0;
         while (true) {
             try {
                 for (const stmt of node.body) {
@@ -314,6 +419,11 @@ export class Interpreter {
 
             // stop when condition becomes true
             if (await this.evaluateExpression(node.condition)) break;
+
+            iter++;
+            if (iter % 200 === 0) {
+                await this.yieldToBrowser();
+            }
         }
     }
 
@@ -431,7 +541,12 @@ export class Interpreter {
                 if (!this.environment.has(node.name)) {
                     throw new Error(`Runtime Error: Variable '${node.name}' is not defined`);
                 }
-                return this.environment.get(node.name);
+
+                const variable = this.environment.get(node.name)!;
+                if (!variable.initialized) {
+                    throw new Error(`Runtime Error: Variable '${node.name}' has been declared but not initialised`);
+                }
+                return variable.value;
             case "UnaryExpression":
                 return this.evaluateUnaryExpression(node);
             case "BinaryExpression":
@@ -866,21 +981,26 @@ export class Interpreter {
             throw new Error(`Runtime Error: Variable '${name}' is not defined`);
         }
 
-        const current = this.environment.get(name);
+        const currentVar = this.environment.get(name)!;
+        if (!currentVar.initialized) {
+            throw new Error(`Runtime Error: Variable '${name}' has been declared but not initialized`);
+        }
+
+        const current = currentVar.value;
         if (typeof current !== "number" || !Number.isFinite(current)) {
             throw new Error(`Runtime Error: Update expressions can only be applied to numbers, but '${name}' is a '${typeof current}'`);
         }
 
         const delta = node.operator === "DOUBLE_PLUS" ? 1 : -1;
+        const newValue = current + delta;
 
-        if (node.prefix) {
-            this.environment.set(name, current + delta);
-            return current + delta;
-        }
-        else {
-            this.environment.set(name, current + delta);
-            return current;
-        }
+        this.environment.set(name, {
+            value: newValue,
+            declaredType: currentVar.declaredType,
+            initialized: true
+        });
+
+        return node.prefix ? newValue : current;
     }
 
     private async evaluateCallExpression(node: AST.CallExpressionNode): Promise<any> {

@@ -89,10 +89,10 @@ export class Parser {
             return;
         }
         else if (this.codeStyle === CodeStyle.CURLY_BRACES) {
-            if (this.checkType(TokenType.SEMI_COLON)) {
+            if (this.match(TokenType.SEMI_COLON)) {
                 return;
             }
-            if (this.checkType(TokenType.NEWLINE)) {
+            if (this.match(TokenType.NEWLINE)) {
                 return;
             }
             if (this.checkType(TokenType.RIGHT_CURLY)) {
@@ -209,6 +209,16 @@ export class Parser {
         return this.blockStack.includes(BlockType.SWITCH);
     }
 
+    private isTypeToken(type: TokenType): boolean {
+        return (
+            type === TokenType.INT_TYPE ||
+            type === TokenType.FLOAT_TYPE ||
+            type === TokenType.CHAR_TYPE ||
+            type === TokenType.STRING_TYPE ||
+            type === TokenType.BOOL_TYPE
+        );
+    }
+
     private skipNewlines(): void {
         if (this.codeStyle === CodeStyle.CURLY_BRACES) {
             while (this.checkType(TokenType.NEWLINE)) { 
@@ -240,6 +250,18 @@ export class Parser {
             case ":=": return TokenType.COLON_EQUALS;
             default:
                 throw new Error(`Config Error: Unknown assignmentSyntax '${config.assignmentSyntax}'`);
+        }
+    }
+
+    private parseDeclaredType(token: Token): AST.PseudoType {
+        switch (token.type) {
+            case TokenType.INT_TYPE: return "int";
+            case TokenType.FLOAT_TYPE: return "float";
+            case TokenType.CHAR_TYPE: return "char";
+            case TokenType.STRING_TYPE: return "string";
+            case TokenType.BOOL_TYPE: return "bool";
+            default:
+                throw new Error(`Syntax Error: Invalid type '${token.value}' at line ${token.line}, column ${token.column}`);
         }
     }
 
@@ -281,6 +303,12 @@ export class Parser {
         if (this.match(TokenType.DO)) {
             return this.parseDoStatement();
         }
+        if (this.isTypeToken(this.peek().type)) {
+            return this.parseDeclaration();
+        }
+        if (this.checkType(TokenType.DOUBLE_PLUS) || this.checkType(TokenType.DOUBLE_MINUS)) {
+            return this.parsePrefixUpdateStatement();
+        }
         if (this.checkType(TokenType.IDENTIFIER)) {
             return this.parseAssignmentOrCompound();
         }
@@ -295,6 +323,28 @@ export class Parser {
         }
 
         throw new Error("Syntax Error: Unexpected '" + this.peek().value + "' at line " + this.peek().line + ", column " + (this.peek().column - this.peek().value!.length));
+    }
+
+    private parseDeclaration(): AST.VariableDeclarationNode {
+        const typeToken = this.advance();
+        const declaredType = this.parseDeclaredType(typeToken);
+
+        const name = this.consume(TokenType.IDENTIFIER, "Expected variable name.");
+
+        let initializer: AST.ExpressionNode | undefined;
+
+        if (this.match(this.getAssignmentTokenType())) {
+            initializer = this.parseExpression();
+        }
+
+        this.consumeStatementTerminator();
+
+        return {
+            type: "VariableDeclaration",
+            name: name.value!,
+            declaredType,
+            initializer
+        };
     }
 
     private parseAssignmentOrCompound(): AST.StatementNode {
@@ -371,7 +421,7 @@ export class Parser {
             };
         }
 
-        throw new Error("Expected '" + config.assignmentSyntax + "' at line " + this.peek().line + ", column " + this.peek().column);
+        throw new Error("Expected '" + config.assignmentSyntax + "' at line " + this.peek().line + ", column " + (this.peek().column - this.peek().value!.length));
     }
 
     private parsePrintStatement(): AST.PrintNode {
@@ -668,6 +718,38 @@ export class Parser {
         }
         this.consumeStatementTerminator();
         return { type: "Break" };
+    }
+
+    private parsePrefixUpdateStatement(): AST.StatementNode {
+        this.consume(
+            this.checkType(TokenType.DOUBLE_PLUS) ? TokenType.DOUBLE_PLUS : TokenType.DOUBLE_MINUS,
+            "Syntax Error: Expected '++' or '--'"
+        );
+
+        const operatorToken = this.previous().type;
+        const name = this.consume(
+            TokenType.IDENTIFIER,
+            `Syntax Error: Expected variable name after '${operatorToken === TokenType.DOUBLE_PLUS ? "++" : "--"}' at line ${this.peek().line}, column ${this.peek().column}`
+        );
+
+        this.consumeStatementTerminator();
+
+        return {
+            type: "VariableAssignment",
+            name: name.value!,
+            value: {
+                type: "BinaryExpression",
+                operator: operatorToken === TokenType.DOUBLE_PLUS ? TokenType.PLUS : TokenType.MINUS,
+                left: {
+                    type: "Identifier",
+                    name: name.value!
+                },
+                right: {
+                    type: "Number",
+                    value: 1
+                }
+            }
+        };
     }
     
     private parseExpression(): AST.ExpressionNode {

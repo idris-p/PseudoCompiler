@@ -1,11 +1,14 @@
 import { Token, TokenType } from "../lexer/token";
 
+export type PseudoType = "int" | "float" | "char" | "string" | "bool";
+
 export type Node =
     | StatementNode
     | ExpressionNode;
 
 export type StatementNode =
     | ProgramNode
+    | VariableDeclarationNode
     | VariableAssignmentNode
     | PrintNode
     | InputStatementNode
@@ -27,7 +30,6 @@ export type ExpressionNode =
     | SliceExpressionNode
     | NumberNode
     | StringNode
-    // | ConcatNode
     | BooleanNode
     | IdentifierNode
     | UpdateExpressionNode
@@ -37,6 +39,13 @@ export type ExpressionNode =
 export type ProgramNode = {
     type: "Program";
     body: StatementNode[];
+};
+
+export type VariableDeclarationNode = {
+    type: "VariableDeclaration";
+    name: string;
+    declaredType: PseudoType;
+    initializer?: ExpressionNode;
 };
 
 export type VariableAssignmentNode = {

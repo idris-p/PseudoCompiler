@@ -5,8 +5,14 @@ import { config } from "../loader.js";
 
 function getKeywords(): Record<string, TokenType> {
     return {
+        "int": TokenType.INT_TYPE,
+        "float": TokenType.FLOAT_TYPE,
+        "char": TokenType.CHAR_TYPE,
+        "string": TokenType.STRING_TYPE,
+        "bool": TokenType.BOOL_TYPE,
         "if": TokenType.IF,
         "then": TokenType.THEN,
+        "elif": TokenType.ELIF,
         "elseif": TokenType.ELSE_IF,
         "else": TokenType.ELSE,
         "endif": TokenType.END_IF,

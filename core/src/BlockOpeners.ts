@@ -3,6 +3,7 @@ import { TokenType } from "./lexer/token"
 export const BLOCK_OPENERS: Set<TokenType> = new Set([
     TokenType.IF,
     TokenType.ELSE_IF,
+    TokenType.ELIF,
     TokenType.ELSE,
     TokenType.SWITCH,
     TokenType.CASE,

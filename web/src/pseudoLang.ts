@@ -3,9 +3,15 @@ import { config } from "../../core/src/loader.js";
 import { BLOCK_OPENERS_STRINGS, BLOCK_CLOSERS_STRINGS } from "../../core/src/BlockOpeners.js";
 
 const STATIC_KEYWORDS = [
+    "int",
+    "float",
+    "char",
+    "string",
+    "bool",
     "if",
     "then",
     "elseif",
+    "elif",
     "else",
     "endif",
     "case",
