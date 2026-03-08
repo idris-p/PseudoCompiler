@@ -5,13 +5,14 @@ import { config } from "../loader.js";
 
 function getKeywords(): Record<string, TokenType> {
     return {
-        "var": TokenType.VAR,
-        "const": TokenType.CONST,
+        [config.varSyntax]: TokenType.VAR,
+        [config.constSyntax]: TokenType.CONST,
         [config.intSyntax]: TokenType.INT_TYPE,
         [config.floatSyntax]: TokenType.FLOAT_TYPE,
         [config.charSyntax]: TokenType.CHAR_TYPE,
         [config.stringSyntax]: TokenType.STRING_TYPE,
         [config.boolSyntax]: TokenType.BOOL_TYPE,
+        "array": TokenType.ARRAY,
         "if": TokenType.IF,
         "then": TokenType.THEN,
         "elif": TokenType.ELIF,

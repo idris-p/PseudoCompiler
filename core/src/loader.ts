@@ -5,6 +5,8 @@ export interface UserConfig {
     codeStyle: CodeStyle;
     commentSyntax: CommentSymbol;
     assignmentSyntax: AssignmentSymbol;
+    varSyntax: string;
+    constSyntax: string;
     intSyntax: string;
     floatSyntax: string;
     charSyntax: string;
@@ -26,6 +28,8 @@ const DEFAULT_CONFIG: UserConfig = {
     codeStyle: CodeStyle.INDENT,
     commentSyntax: "#",
     assignmentSyntax: "=",
+    varSyntax: "var",
+    constSyntax: "const",
     intSyntax: "int",
     floatSyntax: "float",
     charSyntax: "char",
@@ -67,8 +71,10 @@ function sanitizeString(value: unknown, fallback: string): string {
     return trimmed.length > 0 ? trimmed : fallback;
 }
 
-function sanitizeKeywordFields( parsed: any, defaults: UserConfig): Pick<UserConfig, "intSyntax" | "floatSyntax" | "charSyntax" | "stringSyntax" | "boolSyntax" | "inputSyntax" | "printSyntax" | "switchSyntax" | "breakSyntax" | "continueSyntax" | "passSyntax" | "lengthSyntax" | "substringSyntax"> {
+function sanitizeKeywordFields( parsed: any, defaults: UserConfig): Pick<UserConfig, "varSyntax" | "constSyntax" | "intSyntax" | "floatSyntax" | "charSyntax" | "stringSyntax" | "boolSyntax" | "inputSyntax" | "printSyntax" | "switchSyntax" | "breakSyntax" | "continueSyntax" | "passSyntax" | "lengthSyntax" | "substringSyntax"> {
     return {
+        varSyntax: sanitizeString(parsed.varSyntax, defaults.varSyntax),
+        constSyntax: sanitizeString(parsed.constSyntax, defaults.constSyntax),
         intSyntax: sanitizeString(parsed.intSyntax, defaults.intSyntax),
         floatSyntax: sanitizeString(parsed.floatSyntax, defaults.floatSyntax),
         charSyntax: sanitizeString(parsed.charSyntax, defaults.charSyntax),

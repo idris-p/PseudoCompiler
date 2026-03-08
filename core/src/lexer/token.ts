@@ -38,6 +38,7 @@ export enum TokenType {
     NUMBER = "NUMBER",
     STRING = "STRING",
     BOOLEAN = "BOOLEAN",
+    ARRAY = "ARRAY",
 
     // Variables and Constants
     VAR = "VAR",

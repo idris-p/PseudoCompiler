@@ -1,6 +1,13 @@
 import { Token, TokenType } from "../lexer/token";
 
-export type PseudoType = "int" | "float" | "char" | "string" | "bool";
+export type ScalarType = "int" | "float" | "char" | "string" | "bool";
+
+export type PseudoType = 
+    | ScalarType
+    | { 
+        type: "array";
+        elementType?: ScalarType
+    };
 
 export type Node =
     | StatementNode
@@ -35,7 +42,12 @@ export type ExpressionNode =
     | IdentifierNode
     | UpdateExpressionNode
     | CallExpressionNode
-    | MemberExpressionNode;
+    | MemberExpressionNode
+    | ArrayLiteralNode;
+
+export type AssignmentTargetNode =
+    | IdentifierNode
+    | IndexExpressionNode;
 
 export type ProgramNode = {
     type: "Program";
@@ -52,7 +64,7 @@ export type VariableDeclarationNode = {
 
 export type VariableAssignmentNode = {
     type: "VariableAssignment";
-    name: string;
+    target: AssignmentTargetNode;
     value: ExpressionNode;
 };
 
@@ -169,11 +181,6 @@ export type StringNode = {
     value: string;
 };
 
-// export type ConcatNode = {
-//   type: "Concat";
-//   parts: ExpressionNode[];
-// };
-
 export type BooleanNode = {
     type: "Boolean";
     value: boolean;
@@ -213,4 +220,9 @@ export type MemberExpressionNode = {
     type: "MemberExpression";
     object: ExpressionNode;
     property: string;
+}
+
+export type ArrayLiteralNode = {
+    type: "ArrayLiteral";
+    elements: ExpressionNode[];
 }

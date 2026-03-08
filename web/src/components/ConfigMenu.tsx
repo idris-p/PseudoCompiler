@@ -86,6 +86,10 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 <option value="--">--</option>
             </select>
 
+            <h2 className="text-xl font-bold mb-2 mt-4">
+                Variables
+            </h2>
+
             <label className="text-lg block mb-2 font-semibold">
                 Assignment Symbol
             </label>
@@ -98,6 +102,41 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 <option value="=">=</option>
                 <option value="<-">&lt;-</option>
                 <option value=":=">:=</option>
+            </select>
+
+            <label className="text-lg block mb-2 font-semibold">
+                Variable Keyword
+            </label>
+            <select
+                className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
+                defaultValue={config.varSyntax}
+                onChange={(e) => {
+                    config.varSyntax = e.target.value as typeof config.varSyntax;
+                    persistConfig();
+                    if (monaco) refreshPseudoLanguage(monaco);
+                }}
+            >
+                <option value="var">var</option>
+                <option value="variable">variable</option>
+                <option value="let">let</option>
+                <option value="dim">dim</option>
+            </select>
+
+            <label className="text-lg block mb-2 font-semibold">
+                Constant Keyword
+            </label>
+            <select
+                className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
+                defaultValue={config.constSyntax}
+                onChange={(e) => {
+                    config.constSyntax = e.target.value as typeof config.constSyntax;
+                    persistConfig();
+                    if (monaco) refreshPseudoLanguage(monaco);
+                }}
+            >
+                <option value="const">const</option>
+                <option value="constant">constant</option>
+                <option value="final">final</option>
             </select>
 
             <h2 className="text-xl font-bold mb-2 mt-4">

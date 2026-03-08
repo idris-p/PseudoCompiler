@@ -95,6 +95,24 @@ export class Interpreter {
     private coerceToType(value: any, declaredType: AST.PseudoType | undefined, variableName: string): any {
         if (!declaredType) return value;
 
+        // Array types
+        if (typeof declaredType === "object" && declaredType.type === "array") {
+            if (!Array.isArray(value)) {
+                throw new Error(`Type Error: Cannot assign non-array value '${value}' to array variable '${variableName}'`);
+            }
+
+            // Untyped array: accept as-is
+            if (!declaredType.elementType) {
+                return value;
+            }
+
+            // Typed array: coerce every element
+            return value.map((element, index) =>
+                this.coerceToType(element, declaredType.elementType, `${variableName}[${index}]`)
+            );
+        }
+
+        // Scalar types
         switch (declaredType) {
             case "int": {
                 if (typeof value === "number" && Number.isInteger(value)) return value;
@@ -181,36 +199,106 @@ export class Interpreter {
     }
 
     private async executeAssignment(node: AST.VariableAssignmentNode) {
-        if (node.name.toLowerCase() === "pi") {
-            throw new Error("Runtime Error: Cannot assign to reserved constant 'pi'");
-        }
-
         const rawValue = await this.evaluateExpression(node.value);
-        const existing = this.environment.get(node.name);
 
-        if (existing) {
-            if (existing.isConstant) {
-                throw new Error(`Runtime Error: Cannot reassign constant '${node.name}'`);
+        // Identifier assignment
+        if (node.target.type === "Identifier") {
+            const name = node.target.name;
+
+            if (name.toLowerCase() === "pi") {
+                throw new Error("Runtime Error: Cannot assign to reserved constant 'pi'");
             }
 
-            const coercedValue = this.coerceToType(rawValue, existing.declaredType, node.name);
+            const existing = this.environment.get(name);
 
-            this.environment.set(node.name, {
-                value: coercedValue,
-                declaredType: existing.declaredType,
+            if (existing) {
+                if (existing.isConstant) {
+                    throw new Error(`Runtime Error: Cannot reassign constant '${name}'`);
+                }
+
+                const coercedValue = this.coerceToType(rawValue, existing.declaredType, name);
+
+                this.environment.set(name, {
+                    value: coercedValue,
+                    declaredType: existing.declaredType,
+                    initialized: true,
+                    isConstant: existing.isConstant
+                });
+
+                return;
+            }
+
+            // Implicit variable creation
+            this.environment.set(name, {
+                value: rawValue,
                 initialized: true,
-                isConstant: existing.isConstant
+                isConstant: false
             });
 
             return;
         }
 
-        // Implicit variable creation for backwards compatibility
-        this.environment.set(node.name, {
-            value: rawValue,
-            initialized: true,
-            isConstant: false
-        });
+        // Indexed assignment: nums[2] = 4
+        if (node.target.type === "IndexExpression") {
+            if (node.target.object.type !== "Identifier") {
+                throw new Error("Runtime Error: Invalid assignment target");
+            }
+
+            const arrayName = node.target.object.name;
+
+            if (arrayName.toLowerCase() === "pi") {
+                throw new Error("Runtime Error: Cannot assign to reserved constant 'pi'");
+            }
+
+            const variable = this.environment.get(arrayName);
+
+            if (!variable) {
+                throw new Error(`Runtime Error: Variable '${arrayName}' is not defined`);
+            }
+
+            if (variable.isConstant) {
+                throw new Error(`Runtime Error: Cannot modify constant '${arrayName}'`);
+            }
+
+            if (!variable.initialized) {
+                throw new Error(`Runtime Error: Variable '${arrayName}' has been declared but not initialised`);
+            }
+
+            if (!Array.isArray(variable.value)) {
+                throw new Error(`Runtime Error: Variable '${arrayName}' is not an array`);
+            }
+
+            const indexRaw = await this.evaluateExpression(node.target.index);
+            const index = this.requireInteger(indexRaw, "Index");
+            const arr = variable.value;
+
+            const resolvedIndex = index < 0 ? arr.length + index : index;
+
+            if (resolvedIndex < 0 || resolvedIndex >= arr.length) {
+                throw new Error("Runtime Error: Array index out of range");
+            }
+
+            let valueToStore = rawValue;
+
+            // Enforce typed-array element types
+            if (
+                variable.declaredType &&
+                typeof variable.declaredType === "object" &&
+                variable.declaredType.type === "array" &&
+                variable.declaredType.elementType
+            ) {
+                valueToStore = this.coerceToType(
+                    rawValue,
+                    variable.declaredType.elementType,
+                    `${arrayName}[${resolvedIndex}]`
+                );
+            }
+
+            arr[resolvedIndex] = valueToStore;
+            return;
+        }
+
+        throw new Error("Runtime Error: Invalid assignment target");
     }
 
     private async executeUpdateStatement(node: AST.UpdateStatementNode) {
@@ -242,10 +330,17 @@ export class Interpreter {
         });
     }
 
+    private stringifyValue(value: any): string {
+        if (Array.isArray(value)) {
+            return "[" + value.map(v => this.stringifyValue(v)).join(", ") + "]";
+        }
+        return String(value);
+    }
+
     private async executePrint(node: AST.PrintNode) {
         const values = [];
         for (const arg of node.args) {
-            values.push(String(await this.evaluateExpression(arg)));
+            values.push(this.stringifyValue(await this.evaluateExpression(arg)));
         }
 
         const out = values.join(" ");
@@ -599,6 +694,8 @@ export class Interpreter {
                 return node.value;
             case "Boolean":
                 return node.value;
+            case "ArrayLiteral":
+                return await Promise.all(node.elements.map(element => this.evaluateExpression(element)));
             case "Identifier":
                 if (node.name.toLowerCase() === "pi") {
                     return Math.PI;
@@ -731,13 +828,13 @@ export class Interpreter {
         }
 
         // Arrays
-        // if (Array.isArray(obj)) {
-        //     const i = index < 0 ? obj.length + index : index;
-        //     if (i < 0 || i >= obj.length) {
-        //         throw new Error(`Runtime Error: Array index out of range`);
-        //     }
-        //     return obj[i];
-        // }
+        if (Array.isArray(obj)) {
+            const i = index < 0 ? obj.length + index : index;
+            if (i < 0 || i >= obj.length) {
+                throw new Error(`Runtime Error: Array index out of range`);
+            }
+            return obj[i];
+        }
 
         throw new Error(`Runtime Error: Cannot index type '${typeof obj}'`);
     }
@@ -761,9 +858,9 @@ export class Interpreter {
         }
 
         // Arrays
-        // if (Array.isArray(obj)) {
-        //     return this.sliceSequence(obj, startVal, endVal, step);
-        // }
+        if (Array.isArray(obj)) {
+            return this.sliceSequence(obj, startVal, endVal, step);
+        }
 
         throw new Error(`Runtime Error: Cannot slice type '${typeof obj}'`);
     }
@@ -794,11 +891,11 @@ export class Interpreter {
             allowMember: true,
             displayName: () => config.lengthSyntax,
             fn: (finalArgs: any[]) => {
-                const str = finalArgs[0];
-                if (typeof str !== "string") {
-                    throw new Error(`Runtime Error: ${config.lengthSyntax}() argument must be a string, not a '${typeof str}'`);
+                const value = finalArgs[0];
+                if (typeof value !== "string" && !Array.isArray(value)) {
+                    throw new Error(`Runtime Error: ${config.lengthSyntax}() argument must be a string or array, not a '${typeof value}'`);
                 }
-                return str.length;
+                return value.length;
             },
             },
 
@@ -1104,8 +1201,8 @@ export class Interpreter {
         const prop = node.property.toLowerCase();
 
         if (prop === config.lengthSyntax.toLowerCase()) {
-            if (typeof obj !== "string") {
-                throw new Error(`Runtime Error: ${config.lengthSyntax} works on strings only`);
+            if (typeof obj !== "string" && !Array.isArray(obj)) {
+                throw new Error(`Runtime Error: ${config.lengthSyntax} works on strings and arrays only`);
             }
             return obj.length;
         }

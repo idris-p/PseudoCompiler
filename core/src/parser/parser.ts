@@ -253,7 +253,7 @@ export class Parser {
         }
     }
 
-    private parseDeclaredType(token: Token): AST.PseudoType {
+    private parseScalarType(token: Token): AST.ScalarType {
         switch (token.type) {
             case TokenType.INT_TYPE: return "int";
             case TokenType.FLOAT_TYPE: return "float";
@@ -263,6 +263,13 @@ export class Parser {
             default:
                 throw new Error(`Syntax Error: Invalid type '${token.value}' at line ${token.line}, column ${token.column}`);
         }
+    }
+
+    private makeArrayType(elementType?: AST.ScalarType): AST.PseudoType {
+        return {
+            type: "array",
+            elementType
+        };
     }
 
     private parseUntilCondition(): AST.ExpressionNode {
@@ -303,7 +310,7 @@ export class Parser {
         if (this.match(TokenType.DO)) {
             return this.parseDoStatement();
         }
-        if (this.checkType(TokenType.VAR) || this.checkType(TokenType.CONST) || this.isTypeToken(this.peek().type)) {
+        if (this.checkType(TokenType.VAR) || this.checkType(TokenType.CONST) || this.checkType(TokenType.ARRAY) || this.isTypeToken(this.peek().type)) {
             return this.parseDeclaration();
         }
         if (this.checkType(TokenType.DOUBLE_PLUS) || this.checkType(TokenType.DOUBLE_MINUS)) {
@@ -327,7 +334,9 @@ export class Parser {
 
     private parseDeclaration(): AST.VariableDeclarationNode {
         let isConstant = false;
+        let sawArrayKeyword = false;
         let declaredType: AST.PseudoType | undefined;
+        let scalarType: AST.ScalarType | undefined;
 
         // Optional var / const
         if (this.match(TokenType.VAR)) {
@@ -336,9 +345,42 @@ export class Parser {
             isConstant = true;
         }
 
-        // Optional explicit type
+        // Optional array keyword
+        if (this.match(TokenType.ARRAY)) {
+            sawArrayKeyword = true;
+        }
+
+        // Optional scalar type
         if (this.isTypeToken(this.peek().type)) {
-            declaredType = this.parseDeclaredType(this.advance());
+            scalarType = this.parseScalarType(this.advance());
+
+            // Support int[] style
+            if (this.match(TokenType.LEFT_SQUARE)) {
+                this.consume(
+                    TokenType.RIGHT_SQUARE,
+                    `Syntax Error: Expected ']' after array type at line ${this.peek().line}, column ${this.peek().column}`
+                );
+
+                if (sawArrayKeyword) {
+                    throw new Error(
+                        `Syntax Error: Cannot use both 'array' and '[]' in the same declaration at line ${this.previous().line}, column ${this.previous().column}`
+                    );
+                }
+
+                declaredType = {
+                    type: "array",
+                    elementType: scalarType
+                };
+            } else {
+                declaredType = sawArrayKeyword
+                    ? { type: "array", elementType: scalarType }
+                    : scalarType;
+            }
+        } else if (sawArrayKeyword) {
+            // array nums
+            declaredType = {
+                type: "array"
+            };
         }
 
         const name = this.consume(
@@ -361,8 +403,13 @@ export class Parser {
             );
         }
 
-        // Prevent completely empty declarations like just "var"
-        // or "const int" from slipping through via the identifier consume above.
+        if (initializer?.type === "ArrayLiteral") {
+            if (typeof declaredType === "string") {
+                throw new Error(
+                    `Syntax Error: Cannot assign array literal to scalar variable '${name.value}' at line ${name.line}, column ${name.column - name.value!.length}`
+                );
+            }
+        }
 
         this.consumeStatementTerminator();
 
@@ -384,10 +431,21 @@ export class Parser {
     private parseAssignment(): AST.StatementNode {
         const name = this.consume(TokenType.IDENTIFIER, "Syntax Error: Expected variable assignment at line " + this.peek().line + ", column " + (this.peek().column - this.peek().value!.length));
         
-        const identifier: AST.ExpressionNode = {
+        let target: AST.AssignmentTargetNode = {
             type: "Identifier",
             name: name.value!
         };
+
+        // Support indexed targets like nums[2]
+        while (this.match(TokenType.LEFT_SQUARE)) {
+            target = this.finishBracketAccess(target) as AST.AssignmentTargetNode;
+
+            if (target.type !== "IndexExpression") {
+                throw new Error(
+                    `Syntax Error: Invalid assignment target at line ${this.peek().line}, column ${this.peek().column}`
+                );
+            }
+        }
 
         // ++ / --
         if (this.match(TokenType.DOUBLE_PLUS, TokenType.DOUBLE_MINUS)) {
@@ -426,11 +484,16 @@ export class Parser {
 
             return {
                 type: "VariableAssignment",
-                name: name.value!,
+                target,
                 value: {
                     type: "BinaryExpression",
                     operator,
-                    left: identifier,
+                    left: target.type === "Identifier" ? target
+                        : {
+                            type: "IndexExpression",
+                            object: target.object,
+                            index: target.index
+                        },
                     right
                 }
             };
@@ -440,7 +503,7 @@ export class Parser {
             const value = this.parseExpression();
             return {
                 type: "VariableAssignment",
-                name: name.value!,
+                target,
                 value
             };
         }
@@ -1087,6 +1150,28 @@ export class Parser {
                 value: this.previous().value!
             };
         }
+        if (this.match(TokenType.LEFT_SQUARE)) {
+            const elements: AST.ExpressionNode[] = [];
+
+            if (!this.checkType(TokenType.RIGHT_SQUARE)) {
+                do {
+                    elements.push(this.parseExpression());
+                } while (this.match(TokenType.COMMA));
+            }
+
+            this.consume(
+                TokenType.RIGHT_SQUARE,
+                "Syntax Error: Expected ']' after array literal at line " +
+                    this.peek().line +
+                    ", column " +
+                    this.peek().column
+            );
+
+            return {
+                type: "ArrayLiteral",
+                elements
+            };
+}
         if (this.match(TokenType.IDENTIFIER)) {
             return {
                 type: "Identifier",
