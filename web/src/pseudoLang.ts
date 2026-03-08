@@ -3,6 +3,8 @@ import { config } from "../../core/src/loader.js";
 import { BLOCK_OPENERS_STRINGS, BLOCK_CLOSERS_STRINGS } from "../../core/src/BlockOpeners.js";
 
 const STATIC_KEYWORDS = [
+    "var",
+    "const",
     "if",
     "then",
     "elseif",

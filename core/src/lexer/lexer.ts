@@ -5,6 +5,8 @@ import { config } from "../loader.js";
 
 function getKeywords(): Record<string, TokenType> {
     return {
+        "var": TokenType.VAR,
+        "const": TokenType.CONST,
         [config.intSyntax]: TokenType.INT_TYPE,
         [config.floatSyntax]: TokenType.FLOAT_TYPE,
         [config.charSyntax]: TokenType.CHAR_TYPE,

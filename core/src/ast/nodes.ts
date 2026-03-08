@@ -45,8 +45,9 @@ export type ProgramNode = {
 export type VariableDeclarationNode = {
     type: "VariableDeclaration";
     name: string;
-    declaredType: PseudoType;
+    declaredType?: PseudoType;
     initializer?: ExpressionNode;
+    isConstant: boolean;
 };
 
 export type VariableAssignmentNode = {

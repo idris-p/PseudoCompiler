@@ -19,6 +19,7 @@ type RuntimeVariable = {
     value: any;
     declaredType?: AST.PseudoType;
     initialized: boolean;
+    isConstant: boolean;
 };
 
 
@@ -91,9 +92,11 @@ export class Interpreter {
         }
     }
 
-    private coerceToType(value: any, declaredType: AST.PseudoType, variableName: string): any {
+    private coerceToType(value: any, declaredType: AST.PseudoType | undefined, variableName: string): any {
+        if (!declaredType) return value;
+
         switch (declaredType) {
-            case config.intSyntax: {
+            case "int": {
                 if (typeof value === "number" && Number.isInteger(value)) return value;
 
                 if (typeof value === "string" && /^-?\d+$/.test(value.trim())) {
@@ -103,7 +106,7 @@ export class Interpreter {
                 throw new Error(`Type Error: Cannot assign value '${value}' to int variable '${variableName}'`);
             }
 
-            case config.floatSyntax: {
+            case "float": {
                 if (typeof value === "number") return value;
 
                 if (typeof value === "string") {
@@ -123,15 +126,15 @@ export class Interpreter {
                 throw new Error(`Type Error: Cannot assign value '${value}' to float variable '${variableName}'`);
             }
 
-            case config.charSyntax: {
+            case "char": {
                 if (typeof value === "string" && value.length === 1) return value;
                 throw new Error(`Type Error: Cannot assign value '${value}' to char variable '${variableName}'`);
             }
 
-            case config.stringSyntax:
+            case "string":
                 return String(value);
 
-            case config.boolSyntax: {
+            case "bool": {
                 if (typeof value === "boolean") return value;
 
                 if (typeof value === "string") {
@@ -152,6 +155,9 @@ export class Interpreter {
         if (this.environment.has(node.name)) {
             throw new Error(`Runtime Error: Variable '${node.name}' is already declared`);
         }
+        if (node.name.toLowerCase() === "pi") {
+            throw new Error("Runtime Error: Cannot declare variable 'pi' because it is a reserved constant");
+        }
 
         if (node.initializer) {
             const rawValue = await this.evaluateExpression(node.initializer);
@@ -160,44 +166,50 @@ export class Interpreter {
             this.environment.set(node.name, {
                 value: coercedValue,
                 declaredType: node.declaredType,
-                initialized: true
+                initialized: true,
+                isConstant: node.isConstant
             });
         }
         else {
             this.environment.set(node.name, {
                 value: undefined,
                 declaredType: node.declaredType,
-                initialized: false
+                initialized: false,
+                isConstant: node.isConstant
             });
         }
     }
 
     private async executeAssignment(node: AST.VariableAssignmentNode) {
-        const rawValue =  await this.evaluateExpression(node.value);
+        if (node.name.toLowerCase() === "pi") {
+            throw new Error("Runtime Error: Cannot assign to reserved constant 'pi'");
+        }
+
+        const rawValue = await this.evaluateExpression(node.value);
         const existing = this.environment.get(node.name);
 
-        // Explicit type in this statement
         if (existing) {
-            if (existing.declaredType) {
-                const coercedValue = this.coerceToType(rawValue, existing.declaredType, node.name);
-                this.environment.set(node.name, {
-                    value: coercedValue,
-                    declaredType: existing.declaredType,
-                    initialized: true
-                });
-            } else {
-                this.environment.set(node.name, {
-                    value: rawValue,
-                    initialized: true
-                });
+            if (existing.isConstant) {
+                throw new Error(`Runtime Error: Cannot reassign constant '${node.name}'`);
             }
+
+            const coercedValue = this.coerceToType(rawValue, existing.declaredType, node.name);
+
+            this.environment.set(node.name, {
+                value: coercedValue,
+                declaredType: existing.declaredType,
+                initialized: true,
+                isConstant: existing.isConstant
+            });
+
             return;
         }
 
-        // Normal inferred variable
+        // Implicit variable creation for backwards compatibility
         this.environment.set(node.name, {
             value: rawValue,
-            initialized: true
+            initialized: true,
+            isConstant: false
         });
     }
 
@@ -209,6 +221,11 @@ export class Interpreter {
         }
 
         const currentVar = this.environment.get(name)!;
+
+        if (currentVar.isConstant) {
+            throw new Error(`Runtime Error: Cannot update constant '${name}'`);
+        }
+
         const currentValue = currentVar.value;
 
         if (!Number.isInteger(currentValue)) {
@@ -220,7 +237,8 @@ export class Interpreter {
         this.environment.set(name, {
             value: newValue,
             declaredType: currentVar.declaredType,
-            initialized: true
+            initialized: true,
+            isConstant: currentVar.isConstant
         });
     }
 
@@ -288,6 +306,10 @@ export class Interpreter {
         if (node.range) {
             const variable = node.range.variable;
 
+            if (this.environment.has(variable) && this.environment.get(variable)!.isConstant) {
+                throw new Error(`Runtime Error: Cannot use constant '${variable}' as a for-loop variable`);
+            }
+
             let start = await this.evaluateExpression(node.range.start);
             const end = await this.evaluateExpression(node.range.end);
             const step = await this.evaluateExpression(node.range.step);
@@ -308,7 +330,8 @@ export class Interpreter {
             this.environment.set(variable, {
                 value: start,
                 declaredType: "int",
-                initialized: true
+                initialized: true,
+                isConstant: false
             });
 
             const withinBounds = (i: number) => {
@@ -339,7 +362,12 @@ export class Interpreter {
 
                 // i = i + step
                 const current = this.environment.get(variable)!.value;
-                this.environment.set(variable, { value: current + step, declaredType: "int", initialized: true });
+                this.environment.set(variable, {
+                    value: current + step,
+                    declaredType: "int",
+                    initialized: true,
+                    isConstant: false 
+                });
 
                 iter++;
                 if (iter % 200 === 0) {
@@ -888,7 +916,15 @@ export class Interpreter {
                 params: [1],
                 allowMember: false,
                 displayName: () => "tan",
-                fn: (a) => Math.tan(num(a[0], "tan()"))
+                fn: (a) => { 
+                    let angle = num(a[0], "tan()");
+                    // Check for angles where tan is undefined (odd multiples of π/2)
+                    const halfPi = Math.PI / 2;
+                    if (Math.abs(angle % Math.PI) === halfPi) {
+                        throw new Error("Math Error: tan() argument is undefined");
+                    }
+                    return Math.tan(angle);
+                }
             },
             ["sec"]: {
                 params: [1],
@@ -1019,6 +1055,11 @@ export class Interpreter {
         }
 
         const currentVar = this.environment.get(name)!;
+
+        if (currentVar.isConstant) {
+            throw new Error(`Runtime Error: Cannot update constant '${name}'`);
+        }
+
         if (!currentVar.initialized) {
             throw new Error(`Runtime Error: Variable '${name}' has been declared but not initialized`);
         }
@@ -1034,7 +1075,8 @@ export class Interpreter {
         this.environment.set(name, {
             value: newValue,
             declaredType: currentVar.declaredType,
-            initialized: true
+            initialized: true,
+            isConstant: currentVar.isConstant
         });
 
         return node.prefix ? newValue : current;

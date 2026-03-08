@@ -303,7 +303,7 @@ export class Parser {
         if (this.match(TokenType.DO)) {
             return this.parseDoStatement();
         }
-        if (this.isTypeToken(this.peek().type)) {
+        if (this.checkType(TokenType.VAR) || this.checkType(TokenType.CONST) || this.isTypeToken(this.peek().type)) {
             return this.parseDeclaration();
         }
         if (this.checkType(TokenType.DOUBLE_PLUS) || this.checkType(TokenType.DOUBLE_MINUS)) {
@@ -326,10 +326,28 @@ export class Parser {
     }
 
     private parseDeclaration(): AST.VariableDeclarationNode {
-        const typeToken = this.advance();
-        const declaredType = this.parseDeclaredType(typeToken);
+        let isConstant = false;
+        let declaredType: AST.PseudoType | undefined;
 
-        const name = this.consume(TokenType.IDENTIFIER, "Syntax Error: Expected variable name after type declaration at line " + this.peek().line + ", column " + this.peek().column);
+        // Optional var / const
+        if (this.match(TokenType.VAR)) {
+            isConstant = false;
+        } else if (this.match(TokenType.CONST)) {
+            isConstant = true;
+        }
+
+        // Optional explicit type
+        if (this.isTypeToken(this.peek().type)) {
+            declaredType = this.parseDeclaredType(this.advance());
+        }
+
+        const name = this.consume(
+            TokenType.IDENTIFIER,
+            "Syntax Error: Expected variable name in declaration at line " +
+                this.peek().line +
+                ", column " +
+                this.peek().column
+        );
 
         let initializer: AST.ExpressionNode | undefined;
 
@@ -337,13 +355,23 @@ export class Parser {
             initializer = this.parseExpression();
         }
 
+        if (isConstant && !initializer) {
+            throw new Error(
+                `Syntax Error: Constant '${name.value}' must be initialised at line ${name.line}, column ${name.column - name.value!.length}`
+            );
+        }
+
+        // Prevent completely empty declarations like just "var"
+        // or "const int" from slipping through via the identifier consume above.
+
         this.consumeStatementTerminator();
 
         return {
             type: "VariableDeclaration",
             name: name.value!,
             declaredType,
-            initializer
+            initializer,
+            isConstant
         };
     }
 
@@ -553,6 +581,12 @@ export class Parser {
             // C-style for loop: for (initializer; condition; update) { ... }
             let initializer: AST.StatementNode | undefined;
             if (!this.checkType(TokenType.SEMI_COLON)) {
+                if (this.checkType(TokenType.VAR)) {
+                    this.advance();
+                }
+                else if (this.checkType(TokenType.CONST)) {
+                    throw new Error(`Syntax Error: 'const' is not allowed in for loop initialiser at line ${this.peek().line}, column ${this.peek().column}`);
+                }
                 if (this.checkType(TokenType.INT_TYPE)) {
                     this.advance();
                 }
@@ -597,6 +631,12 @@ export class Parser {
         }
         else {
             // Python-style for loop: for i = 0 to 10 { ... }
+            if (this.checkType(TokenType.VAR)) {
+                this.advance();
+            }
+            else if (this.checkType(TokenType.CONST)) {
+                throw new Error(`Syntax Error: 'const' is not allowed in for loop initialiser at line ${this.peek().line}, column ${this.peek().column}`);
+            }
             if (this.checkType(TokenType.INT_TYPE)) {
                 this.advance();
             }

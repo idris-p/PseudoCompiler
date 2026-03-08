@@ -39,6 +39,9 @@ export enum TokenType {
     STRING = "STRING",
     BOOLEAN = "BOOLEAN",
 
+    // Variables and Constants
+    VAR = "VAR",
+    CONST = "CONST",
     // Types
     INT_TYPE = "INT_TYPE",
     FLOAT_TYPE = "FLOAT_TYPE",
