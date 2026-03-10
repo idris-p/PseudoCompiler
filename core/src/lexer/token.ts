@@ -108,4 +108,5 @@ export type Token = {
     value?: string;
     line: number;
     column: number;
+    hasFSuffix?: boolean;
 };

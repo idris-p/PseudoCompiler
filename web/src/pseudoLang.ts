@@ -51,7 +51,13 @@ const STATIC_FUNCTIONS = [
     "exp",
     "ln",
     "log",
-    "abs"
+    "abs",
+
+    "append",
+    "pop",
+    "insert",
+    "remove",
+    "subarray"
 ];
 
 const CONSTANTS = ["pi"];
@@ -102,7 +108,7 @@ function setTokenizer(monacoInstance: typeof Monaco) {
                 [/'/, "string.quote", "@string_single"],
 
                 // Numbers
-                [/\d+/, "number"],
+                [/\d+(?:\.\d+)?f?\b/, "number"],
 
                 // Constants
                 [new RegExp(`\\b(${CONSTANTS.join("|")})\\b`), "number"],

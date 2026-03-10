@@ -12,8 +12,8 @@ export async function runPseudoCode(source: string, io: RuntimeIO) {
     const lexer = new Lexer(source, config.codeStyle)
     const tokens = lexer.tokenize()
 
-    // console.log("Tokens:")
-    // console.log(tokens)
+    console.log("Tokens:")
+    console.log(tokens)
 
     const parser = new Parser(tokens, config.codeStyle)
     const ast = parser.parse()

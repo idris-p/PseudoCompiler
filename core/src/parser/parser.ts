@@ -85,7 +85,7 @@ export class Parser {
     private consumeStatementTerminator(): void {
         if (this.isAtEnd()) return;
         if (this.codeStyle === CodeStyle.INDENT) {
-            this.consume(TokenType.NEWLINE, "Formatting Error: Expected newline after statement but got '" + this.peek().value + "' at line " + this.peek().line);
+            this.consume(TokenType.NEWLINE, "Formatting Error: Expected newline after statement but got '" + this.peek().value + "' at line " + this.peek().line + ", column " + (this.peek().column - this.peek().value!.length));
             return;
         }
         else if (this.codeStyle === CodeStyle.CURLY_BRACES) {
@@ -100,7 +100,7 @@ export class Parser {
             }
         }
 
-        throw new Error("Syntax Error: Expected ';' or newline after statement but got '" + this.peek().value + "' at line " + this.peek().line);
+        throw new Error("Syntax Error: Expected ';' or newline after statement but got '" + this.peek().value + "' at line " + this.peek().line + ", column " + (this.peek().column - this.peek().value!.length));
     }
 
     private consumeBlockTerminator(blockType: BlockType): void {
@@ -317,7 +317,7 @@ export class Parser {
             return this.parsePrefixUpdateStatement();
         }
         if (this.checkType(TokenType.IDENTIFIER)) {
-            return this.parseAssignmentOrCompound();
+            return this.parseIdentifierLeadingStatement();
         }
         if (this.match(TokenType.PASS)) {
             return this.parsePassStatement();
@@ -422,10 +422,45 @@ export class Parser {
         };
     }
 
-    private parseAssignmentOrCompound(): AST.StatementNode {
-        const assignment = this.parseAssignment();
+    private parseIdentifierLeadingStatement(): AST.StatementNode {
+        const start = this.position;
+
+        try {
+            const stmt = this.parseAssignment();
+
+            this.consumeStatementTerminator();
+            return stmt;
+        } catch {
+            this.position = start;
+        }
+
+        const expr = this.parseExpression();
+
+        if (expr.type !== "CallExpression" && expr.type !== "UpdateExpression") {
+            throw new Error("Syntax Error: Expected assignment or function call at line " + this.peek().line + ", column " + this.peek().column);
+        }
+
         this.consumeStatementTerminator();
-        return assignment;
+
+        if (expr.type === "UpdateExpression") {
+            if (expr.argument.type !== "Identifier") {
+                throw new Error(
+                    `Syntax Error: The operand of '${expr.operator === TokenType.DOUBLE_PLUS ? "++" : "--"}' must be a variable`
+                );
+            }
+
+            return {
+                type: "UpdateStatement",
+                operator: expr.operator,
+                argument: expr.argument,
+                prefix: expr.prefix
+            };
+        }
+
+        return {
+            type: "ExpressionStatement",
+            expression: expr
+        };
     }
 
     private parseAssignment(): AST.StatementNode {
@@ -1141,7 +1176,8 @@ export class Parser {
         if (this.match(TokenType.NUMBER)) {
             return {
                 type: "Number",
-                value: Number(this.previous().value!)
+                value: Number(this.previous().value!),
+                hasFSuffix: this.previous().hasFSuffix ?? false
             };
         }
         if (this.match(TokenType.STRING)) {

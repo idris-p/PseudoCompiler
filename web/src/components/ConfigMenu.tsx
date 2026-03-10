@@ -13,6 +13,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
     const [switchFallthrough, setSwitchFallthrough] = useState(config.switchFallthrough);
     const [forInclusiveLower, setForInclusiveLower] = useState(config.forInclusive[0]);
     const [forInclusiveUpper, setForInclusiveUpper] = useState(config.forInclusive[1]);
+    const [arrayBase, setArrayBase] = useState(config.arrayBase);
 
     function persistConfig() {
         localStorage.setItem("pseudoCodeConfig", JSON.stringify(config));
@@ -50,6 +51,15 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
         setSwitchFallthrough(e.target.checked);
         persistConfig();
     };
+
+    /* ---------------- Array Base ---------------- */
+
+    const handleArrayBaseChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newBase = e.target.checked ? 0 : 1;
+        config.arrayBase = newBase;
+        setArrayBase(newBase);
+        persistConfig();
+    }
 
 
     return (
@@ -395,6 +405,20 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                     if (monaco) refreshPseudoLanguage(monaco);
                 }}
             />
+
+            <h2 className="text-xl font-bold mb-2 mt-4">
+                Arrays
+            </h2>
+
+            <label className="text-md block mb-4 font-semibold">
+                Zero-based
+                <input
+                    type="checkbox"
+                    className="ml-2"
+                    checked={arrayBase === 0}
+                    onChange={handleArrayBaseChange}
+                />
+            </label>
         </div>
     );
 }

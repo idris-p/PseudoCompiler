@@ -277,15 +277,23 @@ export class Lexer {
             value += this.advance()
         }
 
-        // Handle fractional part
-        if (this.peek() === ".") {
-            value += this.advance()
-            while (this.isDigit(this.peek())) {
-                value += this.advance()
+        if (!this.isAtEnd() && this.peek() === "." && this.isDigit(this.peekNext())) {
+            value += this.advance();
+
+            while (!this.isAtEnd() && this.isDigit(this.peek())) {
+                value += this.advance();
             }
         }
 
-        return this.makeToken(TokenType.NUMBER, value)
+        let hasFSuffix = false;
+        if (!this.isAtEnd() && this.peek().toLowerCase() === "f") {
+            hasFSuffix = true;
+            this.advance();
+        }
+
+        const token = this.makeToken(TokenType.NUMBER, value);
+        (token as Token & { hasFSuffix?: boolean }).hasFSuffix = hasFSuffix;
+        return token;
     }
 
     private string(quote_mark: string): Token {

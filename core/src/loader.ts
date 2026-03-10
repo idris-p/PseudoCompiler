@@ -22,6 +22,7 @@ export interface UserConfig {
     substringSyntax: string;
     forInclusive: boolean[];
     switchFallthrough: boolean;
+    arrayBase: 0 | 1;
 };
 
 const DEFAULT_CONFIG: UserConfig = {
@@ -45,6 +46,7 @@ const DEFAULT_CONFIG: UserConfig = {
     substringSyntax: "substring",
     forInclusive: [true, false],
     switchFallthrough: false,
+    arrayBase: 0
 };
 
 
@@ -108,6 +110,7 @@ function loadConfig(): UserConfig {
                 ? parsed.forInclusive.map((val: unknown, index: number) => typeof val === "boolean" ? val : DEFAULT_CONFIG.forInclusive[index])
                 : DEFAULT_CONFIG.forInclusive,
             switchFallthrough: Boolean(parsed.switchFallthrough),
+            arrayBase: parsed.arrayBase === 1 ? 1 : 0,
         };
     }
     catch {

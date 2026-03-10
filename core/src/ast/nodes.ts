@@ -17,6 +17,7 @@ export type StatementNode =
     | ProgramNode
     | VariableDeclarationNode
     | VariableAssignmentNode
+    | ExpressionStatementNode
     | UpdateStatementNode
     | PrintNode
     | InputStatementNode
@@ -66,6 +67,11 @@ export type VariableAssignmentNode = {
     type: "VariableAssignment";
     target: AssignmentTargetNode;
     value: ExpressionNode;
+};
+
+export type ExpressionStatementNode = {
+    type: "ExpressionStatement";
+    expression: ExpressionNode;
 };
 
 export interface UpdateStatementNode {
@@ -174,6 +180,7 @@ export type SliceExpressionNode = {
 export type NumberNode = {
     type: "Number";
     value: number;
+    hasFSuffix?: boolean;
 };
 
 export type StringNode = {

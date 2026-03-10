@@ -53,6 +53,9 @@ export class Interpreter {
             case "VariableAssignment":
                 await this.executeAssignment(node);
                 break;
+            case "ExpressionStatement":
+                await this.evaluateExpression(node.expression);
+                break;
             case "UpdateStatement":
                 await this.executeUpdateStatement(node);
                 break;
@@ -169,6 +172,43 @@ export class Interpreter {
         }
     }
 
+    private expressionContainsFSuffix(expr: AST.ExpressionNode): boolean {
+        switch (expr.type) {
+            case "Number":
+                return expr.hasFSuffix === true;
+
+            case "UnaryExpression":
+                return this.expressionContainsFSuffix(expr.operand);
+
+            case "BinaryExpression":
+                return (this.expressionContainsFSuffix(expr.left) || this.expressionContainsFSuffix(expr.right));
+
+            case "IndexExpression":
+                return (this.expressionContainsFSuffix(expr.object) || this.expressionContainsFSuffix(expr.index));
+
+            // case "FunctionCall":
+            //     return expr.args.some(arg => this.expressionContainsFSuffix(arg));
+
+            case "UpdateExpression":
+                return this.expressionContainsFSuffix(expr.argument);
+
+            default:
+                return false;
+        }
+    }
+
+    private assertValidFSuffix(expr: AST.ExpressionNode, declaredType: AST.PseudoType | undefined, variableName: string): void {
+        if (!this.expressionContainsFSuffix(expr)) {
+            return;
+        }
+
+        if (declaredType !== undefined && declaredType !== config.floatSyntax) {
+            throw new Error(
+                `Type Error: Cannot assign float-suffixed literal to ${declaredType} variable '${variableName}'`
+            );
+        }
+    }
+
     private async executeDeclaration(node: AST.VariableDeclarationNode) {
         if (this.environment.has(node.name)) {
             throw new Error(`Runtime Error: Variable '${node.name}' is already declared`);
@@ -178,6 +218,8 @@ export class Interpreter {
         }
 
         if (node.initializer) {
+            this.assertValidFSuffix(node.initializer, node.declaredType, node.name);
+
             const rawValue = await this.evaluateExpression(node.initializer);
             const coercedValue = this.coerceToType(rawValue, node.declaredType, node.name);
 
@@ -189,6 +231,8 @@ export class Interpreter {
             });
         }
         else {
+            this.assertValidFSuffix(node.initializer!, node.declaredType, node.name);
+
             this.environment.set(node.name, {
                 value: undefined,
                 declaredType: node.declaredType,
@@ -216,6 +260,8 @@ export class Interpreter {
                     throw new Error(`Runtime Error: Cannot reassign constant '${name}'`);
                 }
 
+                this.assertValidFSuffix(node.value, existing.declaredType, name);
+
                 const coercedValue = this.coerceToType(rawValue, existing.declaredType, name);
 
                 this.environment.set(name, {
@@ -227,6 +273,8 @@ export class Interpreter {
 
                 return;
             }
+
+            this.assertValidFSuffix(node.value, undefined, name);
 
             // Implicit variable creation
             this.environment.set(name, {
@@ -269,10 +317,8 @@ export class Interpreter {
             }
 
             const indexRaw = await this.evaluateExpression(node.target.index);
-            const index = this.requireInteger(indexRaw, "Index");
             const arr = variable.value;
-
-            const resolvedIndex = index < 0 ? arr.length + index : index;
+            const resolvedIndex = this.normalizeIndexedAccess(indexRaw, arr.length, "Array index");
 
             if (resolvedIndex < 0 || resolvedIndex >= arr.length) {
                 throw new Error("Runtime Error: Array index out of range");
@@ -281,12 +327,8 @@ export class Interpreter {
             let valueToStore = rawValue;
 
             // Enforce typed-array element types
-            if (
-                variable.declaredType &&
-                typeof variable.declaredType === "object" &&
-                variable.declaredType.type === "array" &&
-                variable.declaredType.elementType
-            ) {
+            if (variable.declaredType && typeof variable.declaredType === "object" && variable.declaredType.type === "array" &&variable.declaredType.elementType) {
+                this.assertValidFSuffix(node.value, variable.declaredType.elementType, `${arrayName}[${resolvedIndex}]`);
                 valueToStore = this.coerceToType(
                     rawValue,
                     variable.declaredType.elementType,
@@ -330,9 +372,12 @@ export class Interpreter {
         });
     }
 
-    private stringifyValue(value: any): string {
+    private stringifyValue(value: any, insideArray: boolean = false): string {
         if (Array.isArray(value)) {
-            return "[" + value.map(v => this.stringifyValue(v)).join(", ") + "]";
+            return "[" + value.map(v => this.stringifyValue(v, true)).join(", ") + "]";
+        }
+        if (typeof value === "string") {
+            return insideArray ? `"${value}"` : value;
         }
         return String(value);
     }
@@ -610,22 +655,46 @@ export class Interpreter {
             return this.requireInteger(v, label);
         };
 
+        const userProvidedStart = startVal !== undefined;
+        const userProvidedEnd = endVal !== undefined;
+
         let start = toIntOrUndef(startVal, "Slice start");
         let end = toIntOrUndef(endVal, "Slice end");
 
-        // Defaults depend on step direction (Python-ish)
+        // Defaults are INTERNAL indices, so they must not be base-adjusted later
         if (step > 0) {
             if (start === undefined) start = 0;
             if (end === undefined) end = len;
         } else {
             if (start === undefined) start = len - 1;
-            if (end === undefined) end = -1; // IMPORTANT sentinel for reverse slicing
+            if (end === undefined) end = -1; // reverse sentinel
         }
 
+        const toInternalUserSliceIndex = (value: number, isEnd: boolean, isNegativeStep: boolean): number => {
+            // Negative indices always mean from the end
+            if (value < 0) {
+                // Preserve reverse-slice sentinel
+                if (isNegativeStep && isEnd && value === -1) {
+                    return -1;
+                }
+                return len + value;
+            }
+
+            // Non-negative user-provided bounds respect configured base
+            if (config.arrayBase === 1) {
+                return value - 1;
+            }
+
+            return value;
+        };
+
         if (step > 0) {
-            // Normalize negatives: -1 means last index etc.
-            if (start < 0) start = len + start;
-            if (end < 0) end = len + end;
+            if (userProvidedStart) {
+                start = toInternalUserSliceIndex(start, false, false);
+            }
+            if (userProvidedEnd) {
+                end = toInternalUserSliceIndex(end, true, false);
+            }
 
             // Clamp into [0, len]
             start = Math.max(0, Math.min(len, start));
@@ -633,7 +702,9 @@ export class Interpreter {
 
             if (typeof seq === "string") {
                 let out = "";
-                for (let i = start; i < end; i += step) out += (seq as string)[i] ?? "";
+                for (let i = start; i < end; i += step) {
+                    out += (seq as string)[i] ?? "";
+                }
                 return out as T;
             } else {
                 const out: any[] = [];
@@ -643,21 +714,17 @@ export class Interpreter {
                 return out as T;
             }
         } else {
-            // step < 0
-            // Normalize start normally (-1 => last index)
-            if (start < 0) start = len + start;
+            if (userProvidedStart) {
+                start = toInternalUserSliceIndex(start, false, true);
+            }
+            if (userProvidedEnd) {
+                end = toInternalUserSliceIndex(end, true, true);
+            }
 
-            // Normalize end EXCEPT keep -1 as sentinel
-            // If end is -1, we want to stop when i > -1 (includes index 0).
-            if (end < -1) end = len + end;
-            // If end === -1, keep it as -1
-            // If end >= 0, keep as-is
-
-            // Clamp start into valid index range [-1, len-1]
+            // Clamp into [-1, len - 1]
             if (start >= len) start = len - 1;
             if (start < -1) start = -1;
 
-            // Clamp end into [-1, len-1]
             if (end >= len) end = len - 1;
             if (end < -1) end = -1;
 
@@ -813,26 +880,48 @@ export class Interpreter {
         }
     }
 
+    private toInternalIndex(index: number, length: number, context: string): number {
+        // Negative indices keep Python-style meaning from the end
+        if (index < 0) {
+            return length + index;
+        }
+
+        // Non-negative indices follow configured base
+        return config.arrayBase === 1 ? index - 1 : index;
+    }
+
+    private toInternalSliceBoundary(index: number, length: number): number {
+        if (index < 0) {
+            return length + index;
+        }
+
+        return config.arrayBase === 1 ? index - 1 : index;
+    }
+
+    private normalizeIndexedAccess(indexRaw: any, length: number, context: string): number {
+        const index = this.requireInteger(indexRaw, context);
+        const resolved = this.toInternalIndex(index, length, context);
+
+        if (resolved < 0 || resolved >= length) {
+            throw new Error(`Runtime Error: ${context} out of range`);
+        }
+
+        return resolved;
+    }
+
     private async evaluateIndexExpression(node: AST.IndexExpressionNode): Promise<any> {
         const obj = await this.evaluateExpression(node.object);
         const indexRaw = await this.evaluateExpression(node.index);
-        const index = this.requireInteger(indexRaw, "Index");
 
         // Strings
         if (typeof obj === "string") {
-            const i = index < 0 ? obj.length + index : index;
-            if (i < 0 || i >= obj.length) {
-                throw new Error(`Runtime Error: String index out of range`);
-            }
+            const i = this.normalizeIndexedAccess(indexRaw, obj.length, "String Index");
             return obj[i]; // returns a 1-char string
         }
 
         // Arrays
         if (Array.isArray(obj)) {
-            const i = index < 0 ? obj.length + index : index;
-            if (i < 0 || i >= obj.length) {
-                throw new Error(`Runtime Error: Array index out of range`);
-            }
+            const i = this.normalizeIndexedAccess(indexRaw, obj.length, "Array Index");
             return obj[i];
         }
 
@@ -904,18 +993,20 @@ export class Interpreter {
             allowMember: true,
             displayName: () => "index",
             fn: (finalArgs: any[]) => {
-                const str = finalArgs[0];
-                if (typeof str !== "string") {
-                    throw new Error(`Runtime Error: index() argument must be a string, not a '${typeof str}'`);
-                }
+                const value = finalArgs[0];
                 const index = finalArgs[1];
                 if (typeof index !== "number" || !Number.isInteger(index)) {
                     throw new Error(`Runtime Error: index() argument must be an integer, not a '${typeof index}'`);
                 }
-                if (index < 0 || index >= str.length) {
-                    throw new Error(`Runtime Error: index() out of bounds for string of length ${str.length}`);
+                if (typeof value === "string") {
+                    const i = this.normalizeArrayIndex(index, value.length, "index()", false);
+                    return value[i];
                 }
-                return str[index];
+                if (Array.isArray(value)) {
+                    const i = this.normalizeArrayIndex(index, value.length, "index()", false);
+                    return value[i];
+                }
+                return value[index];
             },
             },
 
@@ -1183,13 +1274,21 @@ export class Interpreter {
         // Global call: substring(str,2,5)
         if (node.callee.type === "Identifier") {
             const funcName = node.callee.name.toLowerCase();
+
+            if (["append", "pop", "insert", "remove", "subarray"].includes(funcName)) {
+                return await this.callArrayBuiltinGlobal(funcName, node.args);
+            }
             return await this.callBuiltin(funcName, undefined, node.args);
         }
 
         // Method call: str.substring(2,5)
         if (node.callee.type === "MemberExpression") {
-            const receiver = await this.evaluateExpression(node.callee.object);
             const methodName = node.callee.property.toLowerCase();
+
+            if (["append", "pop", "insert", "remove", "subarray"].includes(methodName)) {
+                return await this.callArrayBuiltinMethod(methodName, node.callee.object, node.args);
+            }
+            const receiver = await this.evaluateExpression(node.callee.object);
             return await this.callBuiltin(methodName, receiver, node.args);
         }
 
@@ -1210,5 +1309,169 @@ export class Interpreter {
         // If you later add more unary builtins, put them here.
 
         throw new Error(`Runtime Error: Unknown property '${node.property}'`);
+    }
+
+
+    private getArrayVariable(expr: AST.ExpressionNode, fnName: string): { name: string; variable: RuntimeVariable } {
+        if (expr.type !== "Identifier") {
+            throw new Error(`Runtime Error: ${fnName}() requires an array variable`);
+        }
+
+        const name = expr.name;
+
+        if (!this.environment.has(name)) {
+            throw new Error(`Runtime Error: Variable '${name}' is not defined`);
+        }
+
+        const variable = this.environment.get(name)!;
+
+        if (!variable.initialized) {
+            throw new Error(`Runtime Error: Variable '${name}' has been declared but not initialised`);
+        }
+
+        if (!Array.isArray(variable.value)) {
+            throw new Error(`Runtime Error: Variable '${name}' is not an array`);
+        }
+
+        return { name, variable };
+    }
+
+    private requireMutableArrayVariable(expr: AST.ExpressionNode, fnName: string): { name: string; variable: RuntimeVariable; array: any[] } {
+        const { name, variable } = this.getArrayVariable(expr, fnName);
+
+        if (variable.isConstant) {
+            throw new Error(`Runtime Error: Cannot modify constant '${name}'`);
+        }
+
+        return { name, variable, array: variable.value };
+    }
+
+    private coerceArrayElementForVariable(variable: RuntimeVariable, value: any, context: string): any {
+        if (variable.declaredType && typeof variable.declaredType === "object" && variable.declaredType.type === "array" && variable.declaredType.elementType) {
+            return this.coerceToType(value, variable.declaredType.elementType, context);
+        }
+
+        return value;
+    }
+
+    private normalizeArrayIndex(index: any, length: number, context: string, allowEnd = false): number {
+        const i = this.requireInteger(index, context);
+
+        let resolved: number;
+        if (i < 0) {
+            resolved = length + i;
+        } else {
+            resolved = config.arrayBase === 1 ? i - 1 : i;
+        }
+
+        const upperBound = allowEnd ? length : length - 1;
+
+        if (resolved < 0 || resolved > upperBound) {
+            throw new Error(`Runtime Error: ${context} out of range`);
+        }
+
+        return resolved;
+    }
+
+    private assertArgCount(fnName: string, actual: number, expected: number[]) {
+        if (!expected.includes(actual)) {
+            const paramList = expected.join(" or ");
+            throw new Error(
+                `Runtime Error: ${fnName}() takes ${paramList} argument(s) but ${actual} were given`
+            );
+        }
+    }
+
+    private async callArrayBuiltinGlobal(nameLower: string, args: AST.ExpressionNode[]): Promise<any> {
+        switch (nameLower) {
+            case "append": {
+                this.assertArgCount("append", args.length, [2]);
+
+                const { name, variable, array } = this.requireMutableArrayVariable(args[0], "append");
+                const rawValue = await this.evaluateExpression(args[1]);
+                const coerced = this.coerceArrayElementForVariable(variable, rawValue, `${name}[${array.length}]`);
+                array.push(coerced);
+                return null;
+            }
+
+            case "pop": {
+                this.assertArgCount("pop", args.length, [1]);
+
+                const { array } = this.requireMutableArrayVariable(args[0], "pop");
+
+                if (array.length === 0) {
+                    throw new Error("Runtime Error: Cannot pop() from an empty array");
+                }
+
+                return array.pop();
+            }
+
+            case "insert": {
+                this.assertArgCount("insert", args.length, [3]);
+
+                const { name, variable, array } = this.requireMutableArrayVariable(args[0], "insert");
+                const indexRaw = await this.evaluateExpression(args[1]);
+                const index = this.normalizeArrayIndex(indexRaw, array.length, "Insert index", true);
+                const rawValue = await this.evaluateExpression(args[2]);
+                const coerced = this.coerceArrayElementForVariable(variable, rawValue, `${name}[${index}]`);
+
+                array.splice(index, 0, coerced);
+                return null;
+            }
+
+            case "remove": {
+                this.assertArgCount("remove", args.length, [2]);
+
+                const { array } = this.requireMutableArrayVariable(args[0], "remove");
+                const indexRaw = await this.evaluateExpression(args[1]);
+                const index = this.normalizeArrayIndex(indexRaw, array.length, "Remove index");
+
+                return array.splice(index, 1)[0];
+            }
+
+            case "subarray": {
+                this.assertArgCount("subarray", args.length, [3]);
+
+                const arrayValue = await this.evaluateExpression(args[0]);
+                if (!Array.isArray(arrayValue)) {
+                    throw new Error("Runtime Error: subarray() first argument must be an array");
+                }
+                const startRaw = await this.evaluateExpression(args[1]);
+                const endRaw = await this.evaluateExpression(args[2]);
+                const start = this.normalizeArrayIndex(startRaw, arrayValue.length, "Subarray start", true);
+                const end = this.normalizeArrayIndex(endRaw, arrayValue.length, "Subarray end", true);
+
+                if (end < start) {
+                    throw new Error("Runtime Error: subarray() end index must be greater than or equal to start index");
+                }
+
+                return arrayValue.slice(start, end);
+            }
+
+            default:
+                throw new Error(`Runtime Error: Unknown function '${nameLower}'`);
+        }
+    }
+
+    private async callArrayBuiltinMethod(nameLower: string, objectExpr: AST.ExpressionNode, args: AST.ExpressionNode[]): Promise<any> {
+        switch (nameLower) {
+            case "append":
+                this.assertArgCount("append", args.length, [1]);
+                return this.callArrayBuiltinGlobal("append", [objectExpr, ...args]);
+            case "pop":
+                this.assertArgCount("pop", args.length, [0]);
+                return this.callArrayBuiltinGlobal("pop", [objectExpr, ...args]);
+            case "insert":
+                this.assertArgCount("insert", args.length, [2]);
+                return this.callArrayBuiltinGlobal("insert", [objectExpr, ...args]);
+            case "remove":
+                this.assertArgCount("remove", args.length, [1]);
+                return this.callArrayBuiltinGlobal("remove", [objectExpr, ...args]);
+            case "subarray":
+                this.assertArgCount("subarray", args.length, [2]);
+                return this.callArrayBuiltinGlobal("subarray", [objectExpr, ...args]);
+            default:
+                throw new Error(`Runtime Error: Unknown method '${nameLower}'`);
+        }
     }
 }
