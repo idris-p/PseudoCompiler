@@ -954,6 +954,70 @@ export class Interpreter {
         throw new Error(`Runtime Error: Cannot slice type '${typeof obj}'`);
     }
 
+    private isNumberValue(value: any): boolean {
+        return typeof value === "number" && Number.isFinite(value);
+    }
+
+    private getArrayLike(value: any, fnName: string): any[] {
+        if (!Array.isArray(value)) {
+            throw new Error(`Runtime Error: ${fnName}() argument must be an array`);
+        }
+        return value;
+    }
+
+    private requireNonEmptyArray(array: any[], fnName: string): any[] {
+        if (array.length === 0) {
+            throw new Error(`Runtime Error: ${fnName}() cannot be used on an empty array`);
+        }
+        return array;
+    }
+
+    private requireAllNumbers(array: any[], fnName: string): number[] {
+        if (!array.every(v => this.isNumberValue(v))) {
+            throw new Error(`Type Error: ${fnName}() requires an array of numbers`);
+        }
+        return array as number[];
+    }
+
+    private requireAllStrings(array: any[], fnName: string): string[] {
+        if (!array.every(v => typeof v === "string")) {
+            throw new Error(`Type Error: ${fnName}() requires an array of strings`);
+        }
+        return array as string[];
+    }
+
+    private requireSortableArray(array: any[], fnName: string): any[] {
+        const allNumbers = array.every(v => this.isNumberValue(v));
+        const allStrings = array.every(v => typeof v === "string");
+
+        if (!allNumbers && !allStrings) {
+            throw new Error(`Type Error: ${fnName}() requires an array of only numbers or only strings`);
+        }
+
+        return array;
+    }
+
+    private compareArrayValues(a: any, b: any, fnName: string): number {
+        const aIsNum = this.isNumberValue(a);
+        const bIsNum = this.isNumberValue(b);
+        const aIsStr = typeof a === "string";
+        const bIsStr = typeof b === "string";
+
+        if (aIsNum && bIsNum) {
+            return a - b;
+        }
+
+        if (aIsStr && bIsStr) {
+            return a.localeCompare(b);
+        }
+
+        throw new Error(`Type Error: ${fnName}() requires comparable values of the same type`);
+    }
+
+    private toUserIndex(internalIndex: number): number {
+        return config.arrayBase === 1 ? internalIndex + 1 : internalIndex;
+    }
+
     // Built-in functions that can be called in global form (e.g. substring(str,2,5)) or method form (e.g. str.substring(2,5))
     private async callBuiltin(nameLower: string, receiver: any | undefined, args: AST.ExpressionNode[]): Promise<any> {
         // Evaluate arguments given
@@ -1044,16 +1108,52 @@ export class Interpreter {
                 }
             },
             ["max"]: {
-                params: [2],
-                allowMember: false,
+                params: [1, 2],
+                allowMember: true,
                 displayName: () => "max",
-                fn: (a) => Math.max(num(a[0], "max(a)"), num(a[1], "max(b)"))
+                fn: (a) => {
+                    // Array/member form: max(arr) or arr.max()
+                    if (a.length === 1) {
+                        const arr = this.getArrayLike(a[0], "max");
+                        this.requireNonEmptyArray(arr, "max");
+                        this.requireSortableArray(arr, "max");
+
+                        let best = arr[0];
+                        for (let i = 1; i < arr.length; i++) {
+                            if (this.compareArrayValues(arr[i], best, "max") > 0) {
+                                best = arr[i];
+                            }
+                        }
+                        return best;
+                    }
+
+                    // Numeric form: max(a, b)
+                    return Math.max(num(a[0], "max(a)"), num(a[1], "max(b)"));
+                }
             },
             ["min"]: {
-                params: [2],
-                allowMember: false,
+                params: [1, 2],
+                allowMember: true,
                 displayName: () => "min",
-                fn: (a) => Math.min(num(a[0], "min(a)"), num(a[1], "min(b)"))
+                fn: (a) => {
+                    // Array/member form: min(arr) or arr.min()
+                    if (a.length === 1) {
+                        const arr = this.getArrayLike(a[0], "min");
+                        this.requireNonEmptyArray(arr, "min");
+                        this.requireSortableArray(arr, "min");
+
+                        let best = arr[0];
+                        for (let i = 1; i < arr.length; i++) {
+                            if (this.compareArrayValues(arr[i], best, "min") < 0) {
+                                best = arr[i];
+                            }
+                        }
+                        return best;
+                    }
+
+                    // Numeric form: min(a, b)
+                    return Math.min(num(a[0], "min(a)"), num(a[1], "min(b)"));
+                }
             },
             ["floor"]: {
                 params: [1],
@@ -1198,7 +1298,152 @@ export class Interpreter {
                 allowMember: false,
                 displayName: () => "abs",
                 fn: (a) => Math.abs(num(a[0], "abs()"))
-            }
+            },
+            ["isempty"]: {
+                params: [1],
+                allowMember: true,
+                displayName: () => "isEmpty",
+                fn: (a) => {
+                    const arr = this.getArrayLike(a[0], "isEmpty");
+                    return arr.length === 0;
+                }
+            },
+            ["includes"]: {
+                params: [2],
+                allowMember: true,
+                displayName: () => "includes",
+                fn: (a) => {
+                    const arr = this.getArrayLike(a[0], "includes");
+                    return arr.includes(a[1]);
+                }
+            },
+            ["indexof"]: {
+                params: [2],
+                allowMember: true,
+                displayName: () => "indexOf",
+                fn: (a) => {
+                    const arr = this.getArrayLike(a[0], "indexOf");
+                    const idx = arr.findIndex(v => v === a[1]);
+                    return idx === -1 ? -1 : this.toUserIndex(idx);
+                }
+            },
+            ["count"]: {
+                params: [2],
+                allowMember: true,
+                displayName: () => "count",
+                fn: (a) => {
+                    const arr = this.getArrayLike(a[0], "count");
+                    const target = a[1];
+                    return arr.reduce((total, v) => total + (v === target ? 1 : 0), 0);
+                }
+            },
+            ["sort"]: {
+                params: [1],
+                allowMember: true,
+                displayName: () => "sort",
+                fn: (a) => {
+                    const arr = this.getArrayLike(a[0], "sort");
+                    this.requireSortableArray(arr, "sort");
+                    return [...arr].sort((x, y) => this.compareArrayValues(x, y, "sort"));
+                }
+            },
+            ["reverse"]: {
+                params: [1],
+                allowMember: true,
+                displayName: () => "reverse",
+                fn: (a) => {
+                    const arr = this.getArrayLike(a[0], "reverse");
+                    return [...arr].reverse();
+                }
+            },
+            ["join"]: {
+                params: [1, 2],
+                allowMember: true,
+                displayName: () => "join",
+                fn: (a) => {
+                    const arr = this.getArrayLike(a[0], "join");
+                    const separator = a[1] !== undefined ? String(a[1]) : "";
+                    return arr.join(separator);
+                }
+            },
+            ["sum"]: {
+                params: [1],
+                allowMember: true,
+                displayName: () => "sum",
+                fn: (a) => {
+                    const arr = this.getArrayLike(a[0], "sum");
+                    const nums = this.requireAllNumbers(arr, "sum");
+                    return nums.reduce((total, v) => total + v, 0);
+                }
+            },
+            ["mean"]: {
+                params: [1],
+                allowMember: true,
+                displayName: () => "mean",
+                fn: (a) => {
+                    const arr = this.getArrayLike(a[0], "mean");
+                    this.requireNonEmptyArray(arr, "mean");
+                    const nums = this.requireAllNumbers(arr, "mean");
+                    return nums.reduce((total, v) => total + v, 0) / nums.length;
+                }
+            },
+            ["median"]: {
+                params: [1],
+                allowMember: true,
+                displayName: () => "median",
+                fn: (a) => {
+                    const arr = this.getArrayLike(a[0], "median");
+                    this.requireNonEmptyArray(arr, "median");
+                    const nums = [...this.requireAllNumbers(arr, "median")].sort((x, y) => x - y);
+
+                    const mid = Math.floor(nums.length / 2);
+
+                    if (nums.length % 2 === 1) {
+                        return nums[mid];
+                    }
+
+                    return (nums[mid - 1] + nums[mid]) / 2;
+                }
+            },
+            ["mode"]: {
+                params: [1],
+                allowMember: true,
+                displayName: () => "mode",
+                fn: (a) => {
+                    const arr = this.getArrayLike(a[0], "mode");
+                    this.requireNonEmptyArray(arr, "mode");
+
+                    const counts = new Map<any, number>();
+
+                    for (const value of arr) {
+                        counts.set(value, (counts.get(value) ?? 0) + 1);
+                    }
+
+                    let maxCount = 0;
+                    for (const count of counts.values()) {
+                        if (count > maxCount) maxCount = count;
+                    }
+
+                    const modes: any[] = [];
+                    for (const value of arr) {
+                        if ((counts.get(value) ?? 0) === maxCount && !modes.includes(value)) {
+                            modes.push(value);
+                        }
+                    }
+
+                    return modes.length === 1 ? modes[0] : modes;
+                }
+            },
+            ["product"]: {
+                params: [1],
+                allowMember: true,
+                displayName: () => "product",
+                fn: (a) => {
+                    const arr = this.getArrayLike(a[0], "product");
+                    const nums = this.requireAllNumbers(arr, "product");
+                    return nums.reduce((total, v) => total * v, 1);
+                }
+            },
         };
 
         const builtin = builtins[nameLower];
@@ -1295,6 +1540,125 @@ export class Interpreter {
         throw new Error(`Runtime Error: Invalid function call`);
     }
 
+    private callZeroArgMemberBuiltin(nameLower: string, receiver: any): any {
+        const getArray = (fnName: string) => {
+            if (!Array.isArray(receiver)) {
+                throw new Error(`Runtime Error: ${fnName} works on arrays only`);
+            }
+            return receiver;
+        };
+
+        switch (nameLower) {
+            case "isempty": {
+                const arr = getArray("isEmpty");
+                return arr.length === 0;
+            }
+
+            case "sort": {
+                const arr = getArray("sort");
+                this.requireSortableArray(arr, "sort");
+                return [...arr].sort((x, y) => this.compareArrayValues(x, y, "sort"));
+            }
+
+            case "reverse": {
+                const arr = getArray("reverse");
+                return [...arr].reverse();
+            }
+
+            case "join": {
+                const arr = getArray("join");
+                const separator = "";
+                return arr.join(separator);
+            }
+
+            case "sum": {
+                const arr = getArray("sum");
+                const nums = this.requireAllNumbers(arr, "sum");
+                return nums.reduce((total, v) => total + v, 0);
+            }
+
+            case "min": {
+                const arr = getArray("min");
+                this.requireNonEmptyArray(arr, "min");
+                this.requireSortableArray(arr, "min");
+
+                let best = arr[0];
+                for (let i = 1; i < arr.length; i++) {
+                    if (this.compareArrayValues(arr[i], best, "min") < 0) {
+                        best = arr[i];
+                    }
+                }
+                return best;
+            }
+
+            case "max": {
+                const arr = getArray("max");
+                this.requireNonEmptyArray(arr, "max");
+                this.requireSortableArray(arr, "max");
+
+                let best = arr[0];
+                for (let i = 1; i < arr.length; i++) {
+                    if (this.compareArrayValues(arr[i], best, "max") > 0) {
+                        best = arr[i];
+                    }
+                }
+                return best;
+            }
+
+            case "mean": {
+                const arr = getArray("mean");
+                this.requireNonEmptyArray(arr, "mean");
+                const nums = this.requireAllNumbers(arr, "mean");
+                return nums.reduce((total, v) => total + v, 0) / nums.length;
+            }
+
+            case "median": {
+                const arr = getArray("median");
+                this.requireNonEmptyArray(arr, "median");
+                const nums = [...this.requireAllNumbers(arr, "median")].sort((x, y) => x - y);
+
+                const mid = Math.floor(nums.length / 2);
+                return nums.length % 2 === 1
+                    ? nums[mid]
+                    : (nums[mid - 1] + nums[mid]) / 2;
+            }
+
+            case "mode": {
+                const arr = getArray("mode");
+                this.requireNonEmptyArray(arr, "mode");
+
+                const counts = new Map<any, number>();
+
+                for (const value of arr) {
+                    counts.set(value, (counts.get(value) ?? 0) + 1);
+                }
+
+                let maxCount = 0;
+                for (const count of counts.values()) {
+                    if (count > maxCount) maxCount = count;
+                }
+
+                const modes: any[] = [];
+                for (const value of arr) {
+                    if ((counts.get(value) ?? 0) === maxCount && !modes.includes(value)) {
+                        modes.push(value);
+                    }
+                }
+
+                return modes.length === 1 ? modes[0] : modes;
+            }
+
+            case "product": {
+                const arr = getArray("product");
+                const nums = this.requireAllNumbers(arr, "product");
+                return nums.reduce((total, v) => total * v, 1);
+            }
+
+            default:
+                throw new Error(`Runtime Error: Unknown property '${nameLower}'`);
+        }
+    }
+
     private async evaluateMemberExpression(node: AST.MemberExpressionNode): Promise<any> {
         const obj = await this.evaluateExpression(node.object);
         const prop = node.property.toLowerCase();
@@ -1306,7 +1670,21 @@ export class Interpreter {
             return obj.length;
         }
 
-        // If you later add more unary builtins, put them here.
+        if ([
+            "isempty",
+            "sort",
+            "reverse",
+            "join",
+            "sum",
+            "min",
+            "max",
+            "mean",
+            "median",
+            "mode",
+            "product"
+        ].includes(prop)) {
+            return this.callZeroArgMemberBuiltin(prop, obj);
+        }
 
         throw new Error(`Runtime Error: Unknown property '${node.property}'`);
     }

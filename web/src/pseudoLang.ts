@@ -57,7 +57,21 @@ const STATIC_FUNCTIONS = [
     "pop",
     "insert",
     "remove",
-    "subarray"
+    "subarray",
+    "isEmpty",
+    "includes",
+    "indexOf",
+    "count",
+    "sort",
+    "reverse",
+    "join",
+    "sum",
+    "min",
+    "max",
+    "mean",
+    "median",
+    "mode",
+    "product"
 ];
 
 const CONSTANTS = ["pi"];
