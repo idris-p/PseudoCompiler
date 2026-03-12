@@ -9,6 +9,7 @@ export const BLOCK_OPENERS: Set<TokenType> = new Set([
     TokenType.CASE,
     TokenType.DEFAULT,
     TokenType.FOR,
+    TokenType.FOREACH,
     TokenType.WHILE,
     TokenType.DO
 ])

@@ -24,6 +24,7 @@ export type StatementNode =
     | IfNode
     | SwitchNode
     | ForNode
+    | ForEachNode
     | WhileNode
     | DoWhileNode
     | DoUntilNode
@@ -148,6 +149,13 @@ export type ForNode = {
         startInclusive: boolean;
         endInclusive: boolean;
     };
+};
+
+export type ForEachNode = {
+    type: "ForEach";
+    variable: string;
+    iterable: ExpressionNode;
+    body: StatementNode[];
 };
 
 export type UnaryExpressionNode = {

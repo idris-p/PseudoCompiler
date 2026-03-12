@@ -11,6 +11,7 @@ enum BlockType {
     CASE,
     DEFAULT,
     FOR,
+    FOREACH,
     WHILE,
     DO
 }
@@ -120,7 +121,7 @@ export class Parser {
             }
         }
 
-        if (blockType === BlockType.FOR) {
+        if (blockType === BlockType.FOR || blockType === BlockType.FOREACH) {
             if (this.match(TokenType.END_FOR, TokenType.END, TokenType.LOOP)) {
                 this.consumeStatementTerminator();
                 return;
@@ -272,6 +273,14 @@ export class Parser {
         };
     }
 
+    private lookAhead(offset: number): Token {
+        const index = this.position + offset;
+        if (index >= this.tokens.length) {
+            return this.tokens[this.tokens.length - 1];
+        }
+        return this.tokens[index];
+    }
+
     private parseUntilCondition(): AST.ExpressionNode {
         // Optional parentheses: until (x == 5) OR until x == 5
         if (this.match(TokenType.LEFT_PAREN)) {
@@ -303,6 +312,9 @@ export class Parser {
         }
         if (this.match(TokenType.FOR)) {
             return this.parseForStatement();
+        }
+        if (this.match(TokenType.FOREACH)) {
+            return this.parseForEachStatement();
         }
         if (this.match(TokenType.WHILE)) {
             return this.parseWhileStatement();
@@ -674,9 +686,40 @@ export class Parser {
         };
     }
 
-    private parseForStatement(): AST.ForNode {
+    private parseForStatement(): AST.ForNode | AST.ForEachNode {
+        // Case 1: parenthesised syntax
         if (this.match(TokenType.LEFT_PAREN)) {
-            // C-style for loop: for (initializer; condition; update) { ... }
+            // foreach style: for (value : array)
+            if (
+                this.checkType(TokenType.IDENTIFIER) &&
+                this.lookAhead(1).type === TokenType.COLON
+            ) {
+                const variable = this.advance().value!;
+
+                this.consume(
+                    TokenType.COLON,
+                    `Syntax Error: Expected ':' after foreach loop variable at line ${this.peek().line}, column ${this.peek().column}`
+                );
+
+                const iterable = this.parseExpression();
+
+                this.consume(
+                    TokenType.RIGHT_PAREN,
+                    "Syntax Error: Expected ')' after foreach loop header at line " + this.peek().line + ", column " + this.peek().column
+                );
+
+                const body = this.parseBlock(BlockType.FOR);
+                this.consumeBlockTerminator(BlockType.FOR);
+
+                return {
+                    type: "ForEach",
+                    variable,
+                    iterable,
+                    body
+                };
+            }
+
+            // Otherwise normal C-style for loop: for (...)
             let initializer: AST.StatementNode | undefined;
             if (!this.checkType(TokenType.SEMI_COLON)) {
                 if (this.checkType(TokenType.VAR)) {
@@ -691,7 +734,7 @@ export class Parser {
                 else if (this.isTypeToken(this.peek().type)) {
                     throw new Error(`Syntax Error: Unexpected type '${this.peek().value}' in for loop initialiser at line ${this.peek().line}, column ${this.peek().column - this.peek().value!.length}`);
                 }
-                initializer = this.parseAssignment(); // May need to handle variable declarations here as well
+                initializer = this.parseAssignment();
                 if (!config.forInclusive[0] && initializer.type === "VariableAssignment") {
                     initializer.value = {
                         type: "BinaryExpression",
@@ -727,51 +770,125 @@ export class Parser {
                 body
             };
         }
-        else {
-            // Python-style for loop: for i = 0 to 10 { ... }
-            if (this.checkType(TokenType.VAR)) {
-                this.advance();
-            }
-            else if (this.checkType(TokenType.CONST)) {
-                throw new Error(`Syntax Error: 'const' is not allowed in for loop initialiser at line ${this.peek().line}, column ${this.peek().column}`);
-            }
-            if (this.checkType(TokenType.INT_TYPE)) {
-                this.advance();
-            }
-            else if (this.isTypeToken(this.peek().type)) {
-                throw new Error(`Syntax Error: Unexpected type '${this.peek().value}' in for loop initialiser at line ${this.peek().line}, column ${this.peek().column - this.peek().value!.length}`);
-            }
-            const variable = this.consume(TokenType.IDENTIFIER, "Syntax Error: Expected variable name in for loop at line " + this.peek().line + ", column " + (this.peek().column - this.peek().value!.length)).value!;
-            this.consume(this.getAssignmentTokenType(), "Syntax Error: Expected assignment operator after variable name in for loop at line " + this.peek().line + ", column " + (this.peek().column - this.peek().value!.length));
 
-            const start = this.parseExpression();
-            this.consume(TokenType.TO, "Syntax Error: Expected 'to' in for loop after start expression at line " + this.peek().line + ", column " + (this.peek().column - this.peek().value!.length));
+        // Optional var/int prefix for non-C-style loops
+        if (this.checkType(TokenType.VAR)) {
+            this.advance();
+        }
+        else if (this.checkType(TokenType.CONST)) {
+            throw new Error(`Syntax Error: 'const' is not allowed in for loop initialiser at line ${this.peek().line}, column ${this.peek().column}`);
+        }
 
-            const end = this.parseExpression();
+        if (this.checkType(TokenType.INT_TYPE)) {
+            this.advance();
+        }
+        else if (this.isTypeToken(this.peek().type)) {
+            throw new Error(`Syntax Error: Unexpected type '${this.peek().value}' in for loop initialiser at line ${this.peek().line}, column ${this.peek().column - this.peek().value!.length}`);
+        }
 
-            // Optional step syntax: for i = 0 to 10 step 2
-            let step: AST.ExpressionNode = { type: "Number", value: 1 };
+        const variableToken = this.consume(
+            TokenType.IDENTIFIER,
+            "Syntax Error: Expected variable name in for loop at line " + this.peek().line + ", column " + (this.peek().column - this.peek().value!.length)
+        );
 
-            if (this.match(TokenType.STEP)) {
-                step = this.parseExpression();
-            }
-
+        // Case 2: foreach style -> for value in array
+        if (this.match(TokenType.IN)) {
+            const iterable = this.parseExpression();
             const body = this.parseBlock(BlockType.FOR);
             this.consumeBlockTerminator(BlockType.FOR);
 
             return {
-                type: "For",
-                body,
-                range: {
-                    variable,
-                    start,
-                    end,
-                    step,
-                    startInclusive: config.forInclusive[0],
-                    endInclusive: config.forInclusive[1],
-                }
+                type: "ForEach",
+                variable: variableToken.value!,
+                iterable,
+                body
             };
         }
+
+        // Case 3: range style -> for i = 1 to 10
+        this.consume(
+            this.getAssignmentTokenType(),
+            "Syntax Error: Expected assignment operator or 'in' after variable name in for loop at line " + this.peek().line + ", column " + (this.peek().column - this.peek().value!.length)
+        );
+
+        const start = this.parseExpression();
+        this.consume(TokenType.TO, "Syntax Error: Expected 'to' in for loop after start expression at line " + this.peek().line + ", column " + (this.peek().column - this.peek().value!.length));
+
+        const end = this.parseExpression();
+
+        let step: AST.ExpressionNode = { type: "Number", value: 1 };
+
+        if (this.match(TokenType.STEP)) {
+            step = this.parseExpression();
+        }
+
+        const body = this.parseBlock(BlockType.FOR);
+        this.consumeBlockTerminator(BlockType.FOR);
+
+        return {
+            type: "For",
+            body,
+            range: {
+                variable: variableToken.value!,
+                start,
+                end,
+                step,
+                startInclusive: config.forInclusive[0],
+                endInclusive: config.forInclusive[1],
+            }
+        };
+    }
+
+    private parseForEachStatement(): AST.ForEachNode {
+        let variable: string;
+        let iterable: AST.ExpressionNode;
+
+        // Syntax 1: foreach (value : array)
+        if (this.match(TokenType.LEFT_PAREN)) {
+            const name = this.consume(
+                TokenType.IDENTIFIER,
+                `Syntax Error: Expected loop variable name in foreach loop at line ${this.peek().line}, column ${this.peek().column}`
+            );
+
+            this.consume(
+                TokenType.COLON,
+                `Syntax Error: Expected ':' after foreach loop variable at line ${this.peek().line}, column ${this.peek().column}`
+            );
+
+            iterable = this.parseExpression();
+
+            this.consume(
+                TokenType.RIGHT_PAREN,
+                `Syntax Error: Expected ')' after foreach loop header at line ${this.peek().line}, column ${this.peek().column}`
+            );
+
+            variable = name.value!;
+        }
+        // Syntax 2: foreach value in array
+        else {
+            const name = this.consume(
+                TokenType.IDENTIFIER,
+                `Syntax Error: Expected loop variable name in foreach loop at line ${this.peek().line}, column ${this.peek().column}`
+            );
+
+            this.consume(
+                TokenType.IN,
+                `Syntax Error: Expected 'in' after foreach loop variable at line ${this.peek().line}, column ${this.peek().column}`
+            );
+
+            iterable = this.parseExpression();
+            variable = name.value!;
+        }
+
+        const body = this.parseBlock(BlockType.FOR);
+        this.consumeBlockTerminator(BlockType.FOR);
+
+        return {
+            type: "ForEach",
+            variable,
+            iterable,
+            body
+        };
     }
 
     private parseWhileStatement(): AST.WhileNode {

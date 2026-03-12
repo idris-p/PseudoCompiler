@@ -74,6 +74,9 @@ export class Interpreter {
             case "For":
                 await this.executeFor(node);
                 break;
+            case "ForEach":
+                await this.executeForEach(node);
+                break;
             case "While":
                 await this.executeWhile(node);
                 break;
@@ -231,8 +234,6 @@ export class Interpreter {
             });
         }
         else {
-            this.assertValidFSuffix(node.initializer!, node.declaredType, node.name);
-
             this.environment.set(node.name, {
                 value: undefined,
                 declaredType: node.declaredType,
@@ -552,6 +553,54 @@ export class Interpreter {
         }
     }
 
+    private async executeForEach(node: AST.ForEachNode) {
+        const iterableValue = await this.evaluateExpression(node.iterable);
+
+        let values: any[];
+
+        if (Array.isArray(iterableValue)) {
+            values = iterableValue;
+        } else if (typeof iterableValue === "string") {
+            values = [...iterableValue];
+        } else {
+            throw new Error(`Runtime Error: foreach target must be an array or string`);
+        }
+
+        if (this.environment.has(node.variable) && this.environment.get(node.variable)!.isConstant) {
+            throw new Error(`Runtime Error: Cannot use constant '${node.variable}' as a foreach loop variable`);
+        }
+
+        let iter = 0;
+
+        for (const value of values) {
+            this.environment.set(node.variable, {
+                value,
+                initialized: true,
+                isConstant: false
+            });
+
+            try {
+                for (const stmt of node.body) {
+                    await this.executeStatement(stmt);
+                }
+            } catch (e) {
+                if (e instanceof ContinueSignal) {
+                }
+                else if (e instanceof BreakSignal) {
+                    break;
+                }
+                else {
+                    throw e;
+                }
+            }
+
+            iter++;
+            if (iter % 200 === 0) {
+                await this.yieldToBrowser();
+            }
+        }
+    }
+
     private async executeWhile(node: AST.WhileNode) {
         let iter = 0;
         while (await this.evaluateExpression(node.condition)) {
@@ -671,21 +720,26 @@ export class Interpreter {
         }
 
         const toInternalUserSliceIndex = (value: number, isEnd: boolean, isNegativeStep: boolean): number => {
+            let internal: number;
+
             // Negative indices always mean from the end
             if (value < 0) {
-                // Preserve reverse-slice sentinel
-                if (isNegativeStep && isEnd && value === -1) {
+                // Preserve reverse-slice sentinel only for exclusive reverse end
+                if (isNegativeStep && isEnd && value === -1 && !config.sliceUpperInclusive) {
                     return -1;
                 }
-                return len + value;
+                internal = len + value;
+            } else {
+                // Non-negative user-provided bounds respect configured base
+                internal = config.arrayBase === 1 ? value - 1 : value;
             }
 
-            // Non-negative user-provided bounds respect configured base
-            if (config.arrayBase === 1) {
-                return value - 1;
+            // Adjust ONLY the upper bound if inclusive slicing is enabled
+            if (isEnd && config.sliceUpperInclusive) {
+                return isNegativeStep ? internal - 1 : internal + 1;
             }
 
-            return value;
+            return internal;
         };
 
         if (step > 0) {

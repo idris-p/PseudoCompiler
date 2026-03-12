@@ -16,6 +16,7 @@ const STATIC_KEYWORDS = [
     "to",
     "step",
     "endfor",
+    "in",
     "while",
     "endwhile",
     "do",
@@ -95,7 +96,7 @@ function escapeRegex(str: string): string {
 /* ---------------- Tokenizer ---------------- */
 
 function setTokenizer(monacoInstance: typeof Monaco) {
-    const KEYWORDS = [...STATIC_KEYWORDS, config.varSyntax, config.constSyntax, config.intSyntax, config.floatSyntax, config.charSyntax, config.stringSyntax, config.boolSyntax, config.switchSyntax, "end" + config.switchSyntax, config.breakSyntax, config.continueSyntax, config.passSyntax];
+    const KEYWORDS = [...STATIC_KEYWORDS, config.varSyntax, config.constSyntax, config.intSyntax, config.floatSyntax, config.charSyntax, config.stringSyntax, config.boolSyntax, config.switchSyntax, "end" + config.switchSyntax, config.foreachSyntax, config.breakSyntax, config.continueSyntax, config.passSyntax];
     const FUNCTIONS = [...STATIC_FUNCTIONS, config.inputSyntax, config.printSyntax, config.lengthSyntax, config.substringSyntax, config.includesSyntax, config.meanSyntax];
 
     monacoInstance.languages.setMonarchTokensProvider("pseudo", {
@@ -226,7 +227,7 @@ function registerCompletionProvider(monacoInstance: typeof Monaco) {
                     endColumn: word.endColumn,
                 };
 
-                const KEYWORDS = [...STATIC_KEYWORDS, config.varSyntax, config.constSyntax, config.intSyntax, config.floatSyntax, config.charSyntax, config.stringSyntax, config.boolSyntax, config.switchSyntax, "end" + config.switchSyntax, config.breakSyntax, config.continueSyntax, config.passSyntax];
+                const KEYWORDS = [...STATIC_KEYWORDS, config.varSyntax, config.constSyntax, config.intSyntax, config.floatSyntax, config.charSyntax, config.stringSyntax, config.boolSyntax, config.switchSyntax, "end" + config.switchSyntax, config.foreachSyntax, config.breakSyntax,  config.continueSyntax, config.passSyntax];
 
                 const functionSuggestions = FUNCTIONS.map((fn) => {
                     // Special-case: input() with cursor inside brackets

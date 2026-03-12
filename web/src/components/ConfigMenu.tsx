@@ -14,6 +14,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
     const [forInclusiveLower, setForInclusiveLower] = useState(config.forInclusive[0]);
     const [forInclusiveUpper, setForInclusiveUpper] = useState(config.forInclusive[1]);
     const [arrayBase, setArrayBase] = useState(config.arrayBase);
+    const [sliceUpperInclusive, setSliceUpperInclusive] = useState(config.sliceUpperInclusive);
 
     function persistConfig() {
         localStorage.setItem("pseudoCodeConfig", JSON.stringify(config));
@@ -333,6 +334,23 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 />
             </label>
 
+            {/* <label className="text-md block mb-2 font-semibold">
+                For Each Keyword
+            </label>
+            <select
+                className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
+                defaultValue={config.foreachSyntax}
+                onChange={(e) => {
+                    config.foreachSyntax = e.target.value as typeof config.foreachSyntax;
+                    persistConfig();
+                    if (monaco) refreshPseudoLanguage(monaco);
+                }}
+            >
+                <option value="foreach">foreach</option>
+                <option value="for_each">for each</option>
+                <option value="for-each">for-each</option>
+            </select> */}
+
             <h2 className="text-xl font-bold mb-2 mt-4">
                 Control Flow Statements
             </h2>
@@ -417,6 +435,20 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                     className="ml-2"
                     checked={arrayBase === 0}
                     onChange={handleArrayBaseChange}
+                />
+            </label>
+
+            <label className="text-md block mb-4 font-semibold">
+                Slice Upper Inclusive
+                <input
+                    type="checkbox"
+                    className="ml-2"
+                    checked={sliceUpperInclusive}
+                    onChange={(e) => {
+                        setSliceUpperInclusive(e.target.checked);
+                        config.sliceUpperInclusive = e.target.checked;
+                        persistConfig();
+                    }}
                 />
             </label>
 

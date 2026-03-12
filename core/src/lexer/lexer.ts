@@ -29,6 +29,8 @@ function getKeywords(): Record<string, TokenType> {
         "endfor": TokenType.END_FOR,
         [config.continueSyntax]: TokenType.CONTINUE,
         [config.breakSyntax]: TokenType.BREAK,
+        [config.foreachSyntax]: TokenType.FOREACH,
+        "in": TokenType.IN,
         "while": TokenType.WHILE,
         "endwhile": TokenType.END_WHILE,
         "do": TokenType.DO,

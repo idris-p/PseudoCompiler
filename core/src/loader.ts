@@ -15,6 +15,7 @@ export interface UserConfig {
     inputSyntax: string;
     printSyntax: string;
     switchSyntax: string;
+    foreachSyntax: string;
     breakSyntax: string;
     continueSyntax: string;
     passSyntax: string;
@@ -25,6 +26,7 @@ export interface UserConfig {
     forInclusive: boolean[];
     switchFallthrough: boolean;
     arrayBase: 0 | 1;
+    sliceUpperInclusive: boolean;
 };
 
 const DEFAULT_CONFIG: UserConfig = {
@@ -41,6 +43,7 @@ const DEFAULT_CONFIG: UserConfig = {
     inputSyntax: "input",
     printSyntax: "print",
     switchSyntax: "switch",
+    foreachSyntax: "foreach",
     breakSyntax: "break",
     continueSyntax: "continue",
     passSyntax: "pass",
@@ -50,7 +53,8 @@ const DEFAULT_CONFIG: UserConfig = {
     meanSyntax: "mean",
     forInclusive: [true, false],
     switchFallthrough: false,
-    arrayBase: 0
+    arrayBase: 0,
+    sliceUpperInclusive: false
 };
 
 
@@ -77,7 +81,7 @@ function sanitizeString(value: unknown, fallback: string): string {
     return trimmed.length > 0 ? trimmed : fallback;
 }
 
-function sanitizeKeywordFields( parsed: any, defaults: UserConfig): Pick<UserConfig, "varSyntax" | "constSyntax" | "intSyntax" | "floatSyntax" | "charSyntax" | "stringSyntax" | "boolSyntax" | "inputSyntax" | "printSyntax" | "switchSyntax" | "breakSyntax" | "continueSyntax" | "passSyntax" | "lengthSyntax" | "substringSyntax" | "includesSyntax" | "meanSyntax"> {
+function sanitizeKeywordFields( parsed: any, defaults: UserConfig): Pick<UserConfig, "varSyntax" | "constSyntax" | "intSyntax" | "floatSyntax" | "charSyntax" | "stringSyntax" | "boolSyntax" | "inputSyntax" | "printSyntax" | "switchSyntax" | "foreachSyntax" | "breakSyntax" | "continueSyntax" | "passSyntax" | "lengthSyntax" | "substringSyntax" | "includesSyntax" | "meanSyntax"> {
     return {
         varSyntax: sanitizeString(parsed.varSyntax, defaults.varSyntax),
         constSyntax: sanitizeString(parsed.constSyntax, defaults.constSyntax),
@@ -89,6 +93,7 @@ function sanitizeKeywordFields( parsed: any, defaults: UserConfig): Pick<UserCon
         inputSyntax: sanitizeString(parsed.inputSyntax, defaults.inputSyntax),
         printSyntax: sanitizeString(parsed.printSyntax, defaults.printSyntax),
         switchSyntax: sanitizeString(parsed.switchSyntax, defaults.switchSyntax),
+        foreachSyntax: sanitizeString(parsed.foreachSyntax, defaults.foreachSyntax),
         breakSyntax: sanitizeString(parsed.breakSyntax, defaults.breakSyntax),
         continueSyntax: sanitizeString(parsed.continueSyntax, defaults.continueSyntax),
         passSyntax: sanitizeString(parsed.passSyntax, defaults.passSyntax),
@@ -117,6 +122,7 @@ function loadConfig(): UserConfig {
                 : DEFAULT_CONFIG.forInclusive,
             switchFallthrough: Boolean(parsed.switchFallthrough),
             arrayBase: parsed.arrayBase === 1 ? 1 : 0,
+            sliceUpperInclusive: Boolean(parsed.sliceUpperInclusive)
         };
     }
     catch {
