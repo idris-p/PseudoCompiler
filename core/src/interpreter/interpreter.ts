@@ -1308,12 +1308,12 @@ export class Interpreter {
                     return arr.length === 0;
                 }
             },
-            ["includes"]: {
+            [config.includesSyntax.toLowerCase()]: {
                 params: [2],
                 allowMember: true,
-                displayName: () => "includes",
+                displayName: () => config.includesSyntax,
                 fn: (a) => {
-                    const arr = this.getArrayLike(a[0], "includes");
+                    const arr = this.getArrayLike(a[0], config.includesSyntax);
                     return arr.includes(a[1]);
                 }
             },
@@ -1376,14 +1376,14 @@ export class Interpreter {
                     return nums.reduce((total, v) => total + v, 0);
                 }
             },
-            ["mean"]: {
+            [config.meanSyntax.toLowerCase()]: {
                 params: [1],
                 allowMember: true,
-                displayName: () => "mean",
+                displayName: () => config.meanSyntax,
                 fn: (a) => {
-                    const arr = this.getArrayLike(a[0], "mean");
-                    this.requireNonEmptyArray(arr, "mean");
-                    const nums = this.requireAllNumbers(arr, "mean");
+                    const arr = this.getArrayLike(a[0], config.meanSyntax);
+                    this.requireNonEmptyArray(arr, config.meanSyntax);
+                    const nums = this.requireAllNumbers(arr, config.meanSyntax);
                     return nums.reduce((total, v) => total + v, 0) / nums.length;
                 }
             },

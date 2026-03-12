@@ -20,6 +20,8 @@ export interface UserConfig {
     passSyntax: string;
     lengthSyntax: string;
     substringSyntax: string;
+    includesSyntax: string;
+    meanSyntax: string;
     forInclusive: boolean[];
     switchFallthrough: boolean;
     arrayBase: 0 | 1;
@@ -44,6 +46,8 @@ const DEFAULT_CONFIG: UserConfig = {
     passSyntax: "pass",
     lengthSyntax: "len",
     substringSyntax: "substring",
+    includesSyntax: "includes",
+    meanSyntax: "mean",
     forInclusive: [true, false],
     switchFallthrough: false,
     arrayBase: 0
@@ -73,7 +77,7 @@ function sanitizeString(value: unknown, fallback: string): string {
     return trimmed.length > 0 ? trimmed : fallback;
 }
 
-function sanitizeKeywordFields( parsed: any, defaults: UserConfig): Pick<UserConfig, "varSyntax" | "constSyntax" | "intSyntax" | "floatSyntax" | "charSyntax" | "stringSyntax" | "boolSyntax" | "inputSyntax" | "printSyntax" | "switchSyntax" | "breakSyntax" | "continueSyntax" | "passSyntax" | "lengthSyntax" | "substringSyntax"> {
+function sanitizeKeywordFields( parsed: any, defaults: UserConfig): Pick<UserConfig, "varSyntax" | "constSyntax" | "intSyntax" | "floatSyntax" | "charSyntax" | "stringSyntax" | "boolSyntax" | "inputSyntax" | "printSyntax" | "switchSyntax" | "breakSyntax" | "continueSyntax" | "passSyntax" | "lengthSyntax" | "substringSyntax" | "includesSyntax" | "meanSyntax"> {
     return {
         varSyntax: sanitizeString(parsed.varSyntax, defaults.varSyntax),
         constSyntax: sanitizeString(parsed.constSyntax, defaults.constSyntax),
@@ -90,6 +94,8 @@ function sanitizeKeywordFields( parsed: any, defaults: UserConfig): Pick<UserCon
         passSyntax: sanitizeString(parsed.passSyntax, defaults.passSyntax),
         lengthSyntax: sanitizeString(parsed.lengthSyntax, defaults.lengthSyntax),
         substringSyntax: sanitizeString(parsed.substringSyntax, defaults.substringSyntax),
+        includesSyntax: sanitizeString(parsed.includesSyntax, defaults.includesSyntax),
+        meanSyntax: sanitizeString(parsed.meanSyntax, defaults.meanSyntax)
     };
 }
 

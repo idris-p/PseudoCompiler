@@ -100,7 +100,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 Variables
             </h2>
 
-            <label className="text-lg block mb-2 font-semibold">
+            <label className="text-md block mb-2 font-semibold">
                 Assignment Symbol
             </label>
 
@@ -114,7 +114,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 <option value=":=">:=</option>
             </select>
 
-            <label className="text-lg block mb-2 font-semibold">
+            <label className="text-md block mb-2 font-semibold">
                 Variable Keyword
             </label>
             <select
@@ -132,7 +132,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 <option value="dim">dim</option>
             </select>
 
-            <label className="text-lg block mb-2 font-semibold">
+            <label className="text-md block mb-2 font-semibold">
                 Constant Keyword
             </label>
             <select
@@ -153,7 +153,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 Data Types
             </h2>
 
-            <label className="text-lg block mb-2 font-semibold">
+            <label className="text-md block mb-2 font-semibold">
                 Integer Keyword
             </label>
             <select
@@ -169,7 +169,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 <option value="integer">integer</option>
             </select>
 
-            <label className="text-lg block mb-2 font-semibold">
+            <label className="text-md block mb-2 font-semibold">
                 Float Keyword
             </label>
             <select
@@ -186,7 +186,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 <option value="real">real</option>
             </select>
 
-            <label className="text-lg block mb-2 font-semibold">
+            <label className="text-md block mb-2 font-semibold">
                 Character Keyword
             </label>
             <select
@@ -202,7 +202,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 <option value="character">character</option>
             </select>
 
-            <label className="text-lg block mb-2 font-semibold">
+            <label className="text-md block mb-2 font-semibold">
                 String Keyword
             </label>
             <select
@@ -219,7 +219,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 <option value="text">text</option>
             </select>
 
-            <label className="text-lg block mb-2 font-semibold">
+            <label className="text-md block mb-2 font-semibold">
                 Boolean Keyword
             </label>
             <select
@@ -275,7 +275,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 Switch-Case
             </h2>
 
-            <label className="text-lg block mb-2 font-semibold">
+            <label className="text-md block mb-2 font-semibold">
                 Switch Keyword
             </label>
             <select
@@ -419,6 +419,38 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                     onChange={handleArrayBaseChange}
                 />
             </label>
+
+            <label className="text-md block mb-2 font-semibold">
+                Includes Keyword
+            </label>
+            <select
+                className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
+                defaultValue={config.includesSyntax}
+                onChange={(e) => {
+                    config.includesSyntax = e.target.value as typeof config.includesSyntax;
+                    persistConfig();
+                    if (monaco) refreshPseudoLanguage(monaco);
+                }}
+            >
+                <option value="includes">includes</option>
+                <option value="contains">contains</option>
+            </select>
+
+            <label className="text-md block mb-2 font-semibold">
+                Mean Keyword
+            </label>
+            <select
+                className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
+                defaultValue={config.meanSyntax}
+                onChange={(e) => {
+                    config.meanSyntax = e.target.value as typeof config.meanSyntax;
+                    persistConfig();
+                    if (monaco) refreshPseudoLanguage(monaco);
+                }}
+            >
+                <option value="mean">mean</option>
+                <option value="average">average</option>
+            </select>
         </div>
     );
 }

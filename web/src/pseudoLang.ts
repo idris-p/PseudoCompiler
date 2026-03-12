@@ -59,7 +59,6 @@ const STATIC_FUNCTIONS = [
     "remove",
     "subarray",
     "isEmpty",
-    "includes",
     "indexOf",
     "count",
     "sort",
@@ -68,7 +67,6 @@ const STATIC_FUNCTIONS = [
     "sum",
     "min",
     "max",
-    "mean",
     "median",
     "mode",
     "product"
@@ -98,7 +96,7 @@ function escapeRegex(str: string): string {
 
 function setTokenizer(monacoInstance: typeof Monaco) {
     const KEYWORDS = [...STATIC_KEYWORDS, config.varSyntax, config.constSyntax, config.intSyntax, config.floatSyntax, config.charSyntax, config.stringSyntax, config.boolSyntax, config.switchSyntax, "end" + config.switchSyntax, config.breakSyntax, config.continueSyntax, config.passSyntax];
-    const FUNCTIONS = [...STATIC_FUNCTIONS, config.inputSyntax, config.printSyntax, config.lengthSyntax, config.substringSyntax];
+    const FUNCTIONS = [...STATIC_FUNCTIONS, config.inputSyntax, config.printSyntax, config.lengthSyntax, config.substringSyntax, config.includesSyntax, config.meanSyntax];
 
     monacoInstance.languages.setMonarchTokensProvider("pseudo", {
         ignoreCase: true,
@@ -205,7 +203,7 @@ function registerCompletionProvider(monacoInstance: typeof Monaco) {
     completionDisposable =
         monacoInstance.languages.registerCompletionItemProvider("pseudo", {
             provideCompletionItems: (model, position) => {
-                const FUNCTIONS = [...STATIC_FUNCTIONS, config.inputSyntax, config.printSyntax, config.lengthSyntax, config.substringSyntax];
+                const FUNCTIONS = [...STATIC_FUNCTIONS, config.inputSyntax, config.printSyntax, config.lengthSyntax, config.substringSyntax, config.includesSyntax, config.meanSyntax];
 
                 const word = model.getWordUntilPosition(position);
                 const code = model.getValue();
