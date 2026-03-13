@@ -1,7 +1,7 @@
 import { config } from "../../../core/src/loader.js";
 import { CodeStyle } from "../../../core/src/CodeStyle.js";
 import { refreshPseudoLanguage } from "../pseudoLang.js";
-import { validateKeyword } from "../keywordValidator.js";
+import { validateConfigKeyword, type ConfigKeyField } from "../keywordValidator.js";
 import KeywordField from "./KeywordField";
 import { useState } from "react";
 import type Monaco from "monaco-editor";
@@ -19,6 +19,20 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
 
     function persistConfig() {
         localStorage.setItem("pseudoCodeConfig", JSON.stringify(config));
+    }
+
+    function trySetKeywordField(field: ConfigKeyField, value: string): boolean {
+        const result = validateConfigKeyword(field, value);
+
+        if (!result.valid) {
+            alert(result.error);
+            return false;
+        }
+
+        config[field] = value as never;
+        persistConfig();
+        if (monaco) refreshPseudoLanguage(monaco);
+        return true;
     }
 
     /* ---------------- Code Style ---------------- */
@@ -123,9 +137,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
                 defaultValue={config.varSyntax}
                 onChange={(e) => {
-                    config.varSyntax = e.target.value as typeof config.varSyntax;
-                    persistConfig();
-                    if (monaco) refreshPseudoLanguage(monaco);
+                    trySetKeywordField("varSyntax", e.target.value);
                 }}
             >
                 <option value="var">var</option>
@@ -141,9 +153,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
                 defaultValue={config.constSyntax}
                 onChange={(e) => {
-                    config.constSyntax = e.target.value as typeof config.constSyntax;
-                    persistConfig();
-                    if (monaco) refreshPseudoLanguage(monaco);
+                    trySetKeywordField("constSyntax", e.target.value);
                 }}
             >
                 <option value="const">const</option>
@@ -162,9 +172,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
                 defaultValue={config.intSyntax}
                 onChange={(e) => {
-                    config.intSyntax = e.target.value as typeof config.intSyntax;
-                    persistConfig();
-                    if (monaco) refreshPseudoLanguage(monaco);
+                    trySetKeywordField("intSyntax", e.target.value);
                 }}
             >
                 <option value="int">int</option>
@@ -178,9 +186,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
                 defaultValue={config.floatSyntax}
                 onChange={(e) => {
-                    config.floatSyntax = e.target.value as typeof config.floatSyntax;
-                    persistConfig();
-                    if (monaco) refreshPseudoLanguage(monaco);
+                    trySetKeywordField("floatSyntax", e.target.value);
                 }}
             >
                 <option value="float">float</option>
@@ -195,9 +201,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
                 defaultValue={config.charSyntax}
                 onChange={(e) => {
-                    config.charSyntax = e.target.value as typeof config.charSyntax;
-                    persistConfig();
-                    if (monaco) refreshPseudoLanguage(monaco);
+                    trySetKeywordField("charSyntax", e.target.value);
                 }}
             >
                 <option value="char">char</option>
@@ -211,9 +215,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
                 defaultValue={config.stringSyntax}
                 onChange={(e) => {
-                    config.stringSyntax = e.target.value as typeof config.stringSyntax;
-                    persistConfig();
-                    if (monaco) refreshPseudoLanguage(monaco);
+                    trySetKeywordField("stringSyntax", e.target.value);
                 }}
             >
                 <option value="str">str</option>
@@ -228,9 +230,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
                 defaultValue={config.boolSyntax}
                 onChange={(e) => {
-                    config.boolSyntax = e.target.value as typeof config.boolSyntax;
-                    persistConfig();
-                    if (monaco) refreshPseudoLanguage(monaco);
+                    trySetKeywordField("boolSyntax", e.target.value);
                 }}
             >
                 <option value="bool">bool</option>
@@ -244,6 +244,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
             </h2>
 
             <KeywordField
+                field="inputSyntax"
                 label="Input Keyword"
                 value={config.inputSyntax}
                 placeholder="input"
@@ -261,6 +262,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
             </h2>
 
             <KeywordField
+                field="printSyntax"
                 label="Print Keyword"
                 value={config.printSyntax}
                 placeholder="print"
@@ -284,9 +286,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
                 defaultValue={config.switchSyntax}
                 onChange={(e) => {
-                    config.switchSyntax = e.target.value as typeof config.switchSyntax;
-                    persistConfig();
-                    if (monaco) refreshPseudoLanguage(monaco);
+                    trySetKeywordField("switchSyntax", e.target.value);
                 }}
             >
                 <option value="switch">switch</option>
@@ -342,12 +342,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
                 defaultValue={config.foreachSyntax}
                 onChange={(e) => {
-                    const value = e.target.value as typeof config.foreachSyntax;
-                    if (validateKeyword(value)) {
-                        config.foreachSyntax = value;
-                        persistConfig();
-                        if (monaco) refreshPseudoLanguage(monaco);
-                    }
+                    trySetKeywordField("foreachSyntax", e.target.value);
                 }}
             >
                 <option value="foreach">foreach</option>
@@ -359,6 +354,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
             </h2>
 
             <KeywordField
+                field="breakSyntax"
                 label="Break Keyword"
                 value={config.breakSyntax}
                 placeholder="break"
@@ -372,6 +368,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
             />
 
             <KeywordField
+                field="continueSyntax"
                 label="Continue Keyword"
                 value={config.continueSyntax}
                 placeholder="continue"
@@ -385,6 +382,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
             />
 
             <KeywordField
+                field="passSyntax"
                 label="Pass Keyword"
                 value={config.passSyntax}
                 placeholder="pass"
@@ -402,6 +400,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
             </h2>
 
             <KeywordField
+                field="lengthSyntax"
                 label="Length Keyword"
                 value={config.lengthSyntax}
                 placeholder="len"
@@ -415,6 +414,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
             />
 
             <KeywordField
+                field="substringSyntax"
                 label="Substring Keyword"
                 value={config.substringSyntax}
                 placeholder="substring"
@@ -462,9 +462,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
                 defaultValue={config.includesSyntax}
                 onChange={(e) => {
-                    config.includesSyntax = e.target.value as typeof config.includesSyntax;
-                    persistConfig();
-                    if (monaco) refreshPseudoLanguage(monaco);
+                    trySetKeywordField("includesSyntax", e.target.value);
                 }}
             >
                 <option value="includes">includes</option>
@@ -478,9 +476,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
                 defaultValue={config.meanSyntax}
                 onChange={(e) => {
-                    config.meanSyntax = e.target.value as typeof config.meanSyntax;
-                    persistConfig();
-                    if (monaco) refreshPseudoLanguage(monaco);
+                    trySetKeywordField("meanSyntax", e.target.value);
                 }}
             >
                 <option value="mean">mean</option>

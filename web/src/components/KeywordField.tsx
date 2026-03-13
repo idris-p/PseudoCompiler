@@ -1,15 +1,17 @@
 import { useState } from "react";
-import { validateKeyword } from "../keywordValidator.js";
+import { validateConfigKeyword, type ConfigKeyField } from "../keywordValidator.js";
 
 interface KeywordFieldProps {
+    field: ConfigKeyField;
     label: string;
     value: string;
     placeholder?: string;
     onValidChange: (value: string) => void;
-    onAfterChange?: () => void; // optional hook (e.g. refresh monaco)
+    onAfterChange?: () => void;
 }
 
 export default function KeywordField({
+    field,
     label,
     value,
     placeholder,
@@ -17,20 +19,20 @@ export default function KeywordField({
     onAfterChange,
 }: KeywordFieldProps) {
     const [inputValue, setInputValue] = useState(value);
-    const [error, setError] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newValue = e.target.value;
         setInputValue(newValue);
 
-        const result = validateKeyword(newValue);
+        const result = validateConfigKeyword(field, newValue);
 
         if (!result.valid) {
-            setError(true);
+            setError(result.error ?? "Invalid keyword");
             return;
         }
 
-        setError(false);
+        setError(null);
 
         const normalized = newValue.trim().toLowerCase();
         onValidChange(normalized);
@@ -58,7 +60,7 @@ export default function KeywordField({
 
             {error && (
                 <p className="text-red-500 text-sm mt-2">
-                    Invalid keyword format.
+                    {error}
                 </p>
             )}
         </div>
