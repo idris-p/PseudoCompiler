@@ -687,6 +687,8 @@ export class Parser {
     }
 
     private parseForStatement(): AST.ForNode | AST.ForEachNode {
+        const sawEach = this.match(TokenType.EACH);
+
         // Case 1: parenthesised syntax
         if (this.match(TokenType.LEFT_PAREN)) {
             // foreach style: for (value : array)
@@ -717,6 +719,10 @@ export class Parser {
                     iterable,
                     body
                 };
+            }
+
+            if (sawEach) {
+                throw new Error(`Syntax Error: Expected foreach syntax '(value : iterable)' after 'for each' at line ${this.peek().line}, column ${this.peek().column}`);
             }
 
             // Otherwise normal C-style for loop: for (...)
@@ -803,6 +809,10 @@ export class Parser {
                 iterable,
                 body
             };
+        }
+
+        if (sawEach) {
+            throw new Error(`Syntax Error: Expected 'in' after variable name in foreach loop at line ${this.peek().line}, column ${this.peek().column}`);
         }
 
         // Case 3: range style -> for i = 1 to 10

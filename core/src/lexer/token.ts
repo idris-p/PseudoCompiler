@@ -21,6 +21,7 @@ export enum TokenType {
     END_FOR = "END_FOR",
     CONTINUE = "CONTINUE",
     FOREACH = "FOREACH",
+    EACH = "EACH",
     IN = "IN",
 
     WHILE = "WHILE",

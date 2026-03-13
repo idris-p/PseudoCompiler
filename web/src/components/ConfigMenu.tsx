@@ -1,6 +1,7 @@
 import { config } from "../../../core/src/loader.js";
 import { CodeStyle } from "../../../core/src/CodeStyle.js";
 import { refreshPseudoLanguage } from "../pseudoLang.js";
+import { validateKeyword } from "../keywordValidator.js";
 import KeywordField from "./KeywordField";
 import { useState } from "react";
 import type Monaco from "monaco-editor";
@@ -334,22 +335,24 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
                 />
             </label>
 
-            {/* <label className="text-md block mb-2 font-semibold">
+            <label className="text-md block mb-2 font-semibold">
                 For Each Keyword
             </label>
             <select
                 className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
                 defaultValue={config.foreachSyntax}
                 onChange={(e) => {
-                    config.foreachSyntax = e.target.value as typeof config.foreachSyntax;
-                    persistConfig();
-                    if (monaco) refreshPseudoLanguage(monaco);
+                    const value = e.target.value as typeof config.foreachSyntax;
+                    if (validateKeyword(value)) {
+                        config.foreachSyntax = value;
+                        persistConfig();
+                        if (monaco) refreshPseudoLanguage(monaco);
+                    }
                 }}
             >
                 <option value="foreach">foreach</option>
-                <option value="for_each">for each</option>
                 <option value="for-each">for-each</option>
-            </select> */}
+            </select>
 
             <h2 className="text-xl font-bold mb-2 mt-4">
                 Control Flow Statements

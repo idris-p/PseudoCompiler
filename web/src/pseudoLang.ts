@@ -13,6 +13,7 @@ const STATIC_KEYWORDS = [
     "case",
     "default",
     "for",
+    "each",
     "to",
     "step",
     "endfor",
@@ -66,15 +67,12 @@ const STATIC_FUNCTIONS = [
     "reverse",
     "join",
     "sum",
-    "min",
-    "max",
     "median",
     "mode",
     "product"
 ];
 
 const CONSTANTS = ["pi"];
-
 const BOOLEANS = ["true", "false"];
 
 export function registerPseudoLanguage(monacoInstance: typeof Monaco) {
@@ -87,17 +85,97 @@ export function registerPseudoLanguage(monacoInstance: typeof Monaco) {
 
 export function refreshPseudoLanguage(monacoInstance: typeof Monaco) {
     setTokenizer(monacoInstance);
+    setLanguageConfig(monacoInstance);
 }
 
 function escapeRegex(str: string): string {
     return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function uniqueCaseInsensitive(values: string[]): string[] {
+    const seen = new Set<string>();
+    const result: string[] = [];
+
+    for (const value of values) {
+        const key = value.toLowerCase();
+        if (!seen.has(key)) {
+            seen.add(key);
+            result.push(value);
+        }
+    }
+
+    return result;
+}
+
+function buildAlternationPattern(values: string[]): string {
+    return uniqueCaseInsensitive(values)
+        .slice()
+        .sort((a, b) => b.length - a.length)
+        .map(escapeRegex)
+        .join("|");
+}
+
+function buildWordRegex(values: string[]): RegExp {
+    const pattern = buildAlternationPattern(values);
+
+    if (!pattern) {
+        return /$a/;
+    }
+
+    return new RegExp(`\\b(?:${pattern})\\b`);
+}
+
+function buildLineStartRegex(values: Iterable<string>): RegExp {
+    const pattern = buildAlternationPattern(Array.from(values));
+
+    if (!pattern) {
+        return /^$/;
+    }
+
+    return new RegExp(`^\\s*(?:${pattern})\\b.*$`, "i");
+}
+
+function getDynamicKeywords(): string[] {
+    return [
+        ...STATIC_KEYWORDS,
+        config.varSyntax,
+        config.constSyntax,
+        config.intSyntax,
+        config.floatSyntax,
+        config.charSyntax,
+        config.stringSyntax,
+        config.boolSyntax,
+        config.switchSyntax,
+        "end" + config.switchSyntax,
+        config.foreachSyntax,
+        config.breakSyntax,
+        config.continueSyntax,
+        config.passSyntax
+    ];
+}
+
+function getDynamicFunctions(): string[] {
+    return [
+        ...STATIC_FUNCTIONS,
+        config.inputSyntax,
+        config.printSyntax,
+        config.lengthSyntax,
+        config.substringSyntax,
+        config.includesSyntax,
+        config.meanSyntax
+    ];
+}
+
 /* ---------------- Tokenizer ---------------- */
 
 function setTokenizer(monacoInstance: typeof Monaco) {
-    const KEYWORDS = [...STATIC_KEYWORDS, config.varSyntax, config.constSyntax, config.intSyntax, config.floatSyntax, config.charSyntax, config.stringSyntax, config.boolSyntax, config.switchSyntax, "end" + config.switchSyntax, config.foreachSyntax, config.breakSyntax, config.continueSyntax, config.passSyntax];
-    const FUNCTIONS = [...STATIC_FUNCTIONS, config.inputSyntax, config.printSyntax, config.lengthSyntax, config.substringSyntax, config.includesSyntax, config.meanSyntax];
+    const KEYWORDS = getDynamicKeywords();
+    const FUNCTIONS = getDynamicFunctions();
+
+    const keywordRegex = buildWordRegex(KEYWORDS);
+    const functionRegex = buildWordRegex(FUNCTIONS);
+    const booleanRegex = buildWordRegex(BOOLEANS);
+    const constantRegex = buildWordRegex(CONSTANTS);
 
     monacoInstance.languages.setMonarchTokensProvider("pseudo", {
         ignoreCase: true,
@@ -108,15 +186,15 @@ function setTokenizer(monacoInstance: typeof Monaco) {
                 [new RegExp(`${escapeRegex(config.commentSyntax)}.*$`), "comment"],
 
                 // Keywords
-                [new RegExp(`\\b(${KEYWORDS.join("|")})\\b`), "keyword"],
+                [keywordRegex, "keyword"],
 
-                // Functions (dynamic)
-                [new RegExp(`\\b(${FUNCTIONS.join("|")})\\b`), "type.identifier"],
+                // Functions
+                [functionRegex, "type.identifier"],
 
                 // Booleans
-                [new RegExp(`\\b(${BOOLEANS.join("|")})\\b`), "keyword"],
+                [booleanRegex, "keyword"],
 
-                // Strings (stateful, supports escapes + highlight them)
+                // Strings
                 [/"/, "string.quote", "@string_double"],
                 [/'/, "string.quote", "@string_single"],
 
@@ -124,7 +202,7 @@ function setTokenizer(monacoInstance: typeof Monaco) {
                 [/\d+(?:\.\d+)?f?\b/, "number"],
 
                 // Constants
-                [new RegExp(`\\b(${CONSTANTS.join("|")})\\b`), "number"],
+                [constantRegex, "number"],
 
                 // Identifiers
                 [/[a-zA-Z_]\w*/, "variable"],
@@ -133,22 +211,16 @@ function setTokenizer(monacoInstance: typeof Monaco) {
                 [/==|!=|<=|>=|<|>/, "operator"],
                 [/[+\-*/]/, "operator"],
             ],
+
             string_double: [
-                // Escape sequences (different colour)
                 [/\\[nt"\\']/, "constant.character.escape"],
-
-                // Anything except backslash or quote
                 [/[^\\"]+/, "string"],
-
-                // Closing quote
                 [/"/, "string.quote", "@pop"],
-
-                // Stray backslash (invalid escape) — still highlight it as escape-ish
                 [/\\/, "invalid"],
             ],
 
             string_single: [
-                [/\\[nt"\\']/,"constant.character.escape"],
+                [/\\[nt"\\']/, "constant.character.escape"],
                 [/[^\\']+/, "string"],
                 [/'/, "string.quote", "@pop"],
                 [/\\/, "invalid"],
@@ -160,6 +232,9 @@ function setTokenizer(monacoInstance: typeof Monaco) {
 /* ---------------- Language Config ---------------- */
 
 function setLanguageConfig(monacoInstance: typeof Monaco) {
+    const increaseIndentPattern = buildLineStartRegex(BLOCK_OPENERS_STRINGS);
+    const decreaseIndentPattern = buildLineStartRegex(BLOCK_CLOSERS_STRINGS);
+
     monacoInstance.languages.setLanguageConfiguration("pseudo", {
         comments: {
             lineComment: config.commentSyntax,
@@ -177,12 +252,12 @@ function setLanguageConfig(monacoInstance: typeof Monaco) {
             { open: "'", close: "'" },
         ],
         indentationRules: {
-            increaseIndentPattern: new RegExp(`^\\s*(${Array.from(BLOCK_OPENERS_STRINGS).join("|")}).*$`),
-            decreaseIndentPattern: new RegExp(`^\\s*(${Array.from(BLOCK_CLOSERS_STRINGS).join("|")}).*$`),
+            increaseIndentPattern,
+            decreaseIndentPattern,
         },
         onEnterRules: [
             {
-                beforeText: new RegExp(`^\\s*(${Array.from(BLOCK_OPENERS_STRINGS).join("|")}).*$`),
+                beforeText: increaseIndentPattern,
                 action: {
                     indentAction: monacoInstance.languages.IndentAction.Indent
                 }
@@ -196,7 +271,6 @@ function setLanguageConfig(monacoInstance: typeof Monaco) {
 let completionDisposable: Monaco.IDisposable | null = null;
 
 function registerCompletionProvider(monacoInstance: typeof Monaco) {
-    // Prevent duplicate providers
     if (completionDisposable) {
         completionDisposable.dispose();
     }
@@ -204,21 +278,50 @@ function registerCompletionProvider(monacoInstance: typeof Monaco) {
     completionDisposable =
         monacoInstance.languages.registerCompletionItemProvider("pseudo", {
             provideCompletionItems: (model, position) => {
-                const FUNCTIONS = [...STATIC_FUNCTIONS, config.inputSyntax, config.printSyntax, config.lengthSyntax, config.substringSyntax, config.includesSyntax, config.meanSyntax];
+                const FUNCTIONS = getDynamicFunctions();
+                const KEYWORDS = getDynamicKeywords();
 
                 const word = model.getWordUntilPosition(position);
                 const code = model.getValue();
 
-                const variableMatches =
-                    code.match(/\b([a-zA-Z_]\w*)\s*=/g) || [];
+                const variableNames = new Set<string>();
 
-                const variables = Array.from(
-                    new Set(
-                        variableMatches.map((v) =>
-                            v.replace(/\s*=$/, "")
-                        )
-                    )
-                );
+                // Assignments: x = ...
+                for (const match of code.matchAll(/\b([a-zA-Z_]\w*)\s*=/gi)) {
+                    variableNames.add(match[1]);
+                }
+
+                // Declarations: var x, const x, int x, float x, string x, bool x, char x, array x
+                const declarationKeywords = [
+                    config.varSyntax,
+                    config.constSyntax,
+                    config.intSyntax,
+                    config.floatSyntax,
+                    config.charSyntax,
+                    config.stringSyntax,
+                    config.boolSyntax,
+                    "array"
+                ]
+                    .map(escapeRegex)
+                    .join("|");
+
+                for (const match of code.matchAll(
+                    new RegExp(`\\b(?:${declarationKeywords})\\b\\s+([a-zA-Z_]\\w*)`, "gi")
+                )) {
+                    variableNames.add(match[1]);
+                }
+
+                // Foreach: for value in array / for each value in array
+                for (const match of code.matchAll(/\bfor\b(?:\s+each)?\s+([a-zA-Z_]\w*)\s+\bin\b/gi)) {
+                    variableNames.add(match[1]);
+                }
+
+                // Foreach with parens: for (value : array) / for each (value : array)
+                for (const match of code.matchAll(/\bfor\b(?:\s+each)?\s*\(\s*([a-zA-Z_]\w*)\s*:/gi)) {
+                    variableNames.add(match[1]);
+                }
+
+                const variables = Array.from(variableNames);
 
                 const range = {
                     startLineNumber: position.lineNumber,
@@ -227,29 +330,14 @@ function registerCompletionProvider(monacoInstance: typeof Monaco) {
                     endColumn: word.endColumn,
                 };
 
-                const KEYWORDS = [...STATIC_KEYWORDS, config.varSyntax, config.constSyntax, config.intSyntax, config.floatSyntax, config.charSyntax, config.stringSyntax, config.boolSyntax, config.switchSyntax, "end" + config.switchSyntax, config.foreachSyntax, config.breakSyntax,  config.continueSyntax, config.passSyntax];
-
-                const functionSuggestions = FUNCTIONS.map((fn) => {
-                    // Special-case: input() with cursor inside brackets
-                    if (fn.toLowerCase() === config.inputSyntax.toLowerCase() || FUNCTIONS.includes(fn)) {
-                        return {
-                        label: fn,
-                        kind: monacoInstance.languages.CompletionItemKind.Function,
-                        insertText: `${fn}($0)`,
-                        insertTextRules:
-                            monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-                        range,
-                        };
-                    }
-
-                    // Normal functions
-                    return {
-                        label: fn,
-                        kind: monacoInstance.languages.CompletionItemKind.Function,
-                        insertText: fn,
-                        range,
-                    };
-                });
+                const functionSuggestions = FUNCTIONS.map((fn) => ({
+                    label: fn,
+                    kind: monacoInstance.languages.CompletionItemKind.Function,
+                    insertText: `${fn}($0)`,
+                    insertTextRules:
+                        monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+                    range,
+                }));
 
                 const allSuggestions = [
                     ...KEYWORDS.map((kw) => ({
@@ -279,9 +367,8 @@ function registerCompletionProvider(monacoInstance: typeof Monaco) {
                     })),
                 ];
 
-                // Deduplicate by label
                 const unique = Array.from(
-                    new Map(allSuggestions.map(s => [s.label, s])).values()
+                    new Map(allSuggestions.map(s => [s.label.toLowerCase(), s])).values()
                 );
 
                 return { suggestions: unique };
