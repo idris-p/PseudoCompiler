@@ -11,7 +11,8 @@ export const BLOCK_OPENERS: Set<TokenType> = new Set([
     TokenType.FOR,
     TokenType.FOREACH,
     TokenType.WHILE,
-    TokenType.DO
+    TokenType.DO,
+    TokenType.FUNCTION
 ])
 
 export const BLOCK_CLOSERS: Set<TokenType> = new Set([
@@ -20,7 +21,8 @@ export const BLOCK_CLOSERS: Set<TokenType> = new Set([
     TokenType.END_FOR,
     TokenType.END_WHILE,
     TokenType.END,
-    TokenType.LOOP
+    TokenType.LOOP,
+    TokenType.END_FUNCTION
 ])
 
 export const BLOCK_OPENERS_STRINGS: Set<string> = new Set(Array.from(BLOCK_OPENERS).map(tokenType => tokenType.toLowerCase()))

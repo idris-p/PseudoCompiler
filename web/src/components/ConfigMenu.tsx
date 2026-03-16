@@ -396,6 +396,25 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
             />
 
             <h2 className="text-xl font-bold mb-2 mt-4">
+                Functions
+            </h2>
+
+            <label className="text-md block mb-2 font-semibold">
+                Function Keyword
+            </label>
+            <select
+                className="w-1/2 mb-6 p-2 border border-gray-300 rounded dark:bg-neutral-800"
+                defaultValue={config.functionSyntax}
+                onChange={(e) => {
+                    trySetKeywordField("functionSyntax", e.target.value);
+                }}
+            >
+                <option value="function">function</option>
+                <option value="def">def</option>
+                <option value="func">func</option>
+            </select>
+
+            <h2 className="text-xl font-bold mb-2 mt-4">
                 String Operations
             </h2>
 

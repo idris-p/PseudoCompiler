@@ -10,6 +10,10 @@ export type ExecutionResult = {
 class BreakSignal {}
 class ContinueSignal {}
 
+class ReturnSignal {
+    constructor(public value: any) {}
+}
+
 export type RuntimeIO = {
     write: (value: string) => void;                 // stream output immediately
     read: (prompt?: string) => Promise<string>;     // request user input (pauses program)
@@ -22,25 +26,99 @@ type RuntimeVariable = {
     isConstant: boolean;
 };
 
+type UserFunction = {
+    name: string;
+    params: AST.FunctionParameterNode[];
+    body: AST.StatementNode[];
+};
+
 
 // Interpreter Class - executes the AST
 export class Interpreter {
     private environment: Map<string, RuntimeVariable> = new Map();
+    private scopes: Map<string, RuntimeVariable>[] = [this.environment];
+    private functions: Map<string, UserFunction> = new Map();
     private io: RuntimeIO;
+
+    private stepsSinceYield = 0;
+    private recursionDepth = 0;
+    private readonly maxRecursionDepth = 1000;
 
     constructor(io: RuntimeIO) {
         this.io = io;
     }
 
     async run(program: AST.ProgramNode): Promise<ExecutionResult> {
-        this.environment.clear();
+        this.environment = new Map();
+        this.scopes = [this.environment];
+        this.functions.clear();
+        this.stepsSinceYield = 0;
+        this.recursionDepth = 0;
+
         for (const statement of program.body) {
             await this.executeStatement(statement);
         }
         return { output: [], environment: this.environment };
     }
 
+    private currentScope(): Map<string, RuntimeVariable> {
+        return this.scopes[this.scopes.length - 1];
+    }
+
+    private pushScope(): void {
+        this.scopes.push(new Map());
+    }
+
+    private popScope(): void {
+        if (this.scopes.length === 1) {
+            throw new Error("Runtime Error: Cannot pop global scope");
+        }
+        this.scopes.pop();
+    }
+
+    private setVariableInCurrentScope(name: string, variable: RuntimeVariable): void {
+        this.currentScope().set(name, variable);
+    }
+
+    private isInsideFunctionScope(): boolean {
+        return this.scopes.length > 1;
+    }
+
+    private getVariable(name: string): RuntimeVariable | undefined {
+        for (let i = this.scopes.length - 1; i >= 0; i--) {
+            const found = this.scopes[i].get(name);
+            if (found) return found;
+        }
+        return undefined;
+    }
+
+    private hasVariableInCurrentScope(name: string): boolean {
+        return this.currentScope().has(name);
+    }
+
+    private hasVariableAnywhere(name: string): boolean {
+        return this.getVariable(name) !== undefined;
+    }
+
+    private declareVariable(name: string, variable: RuntimeVariable): void {
+        this.currentScope().set(name, variable);
+    }
+
+    private assignVariable(name: string, variable: RuntimeVariable): void {
+        for (let i = this.scopes.length - 1; i >= 0; i--) {
+            if (this.scopes[i].has(name)) {
+                this.scopes[i].set(name, variable);
+                return;
+            }
+        }
+
+        // implicit creation goes into current scope
+        this.currentScope().set(name, variable);
+    }
+
     private async executeStatement(node: AST.StatementNode): Promise<void> {
+        await this.maybeYieldToBrowser();
+
         switch (node.type) {
             case "Program":
                 for (const stmt of node.body) {
@@ -86,6 +164,13 @@ export class Interpreter {
             case "DoUntil":
                 await this.executeDoUntil(node);
                 break;
+            case "FunctionDeclaration":
+                this.functions.set(node.name.toLowerCase(), {
+                    name: node.name,
+                    params: node.params,
+                    body: node.body
+                });
+                break;
             case "Pass":
                 // Do nothing
                 break;
@@ -93,6 +178,11 @@ export class Interpreter {
                 throw new BreakSignal();
             case "Continue":
                 throw new ContinueSignal();
+            case "Return":
+                const value = node.value
+                    ? await this.evaluateExpression(node.value)
+                    : null;
+                throw new ReturnSignal(value);
             default:
                 throw new Error(`Runtime Error: Unknown statement type: ${(node as any).type}`);
         }
@@ -213,7 +303,7 @@ export class Interpreter {
     }
 
     private async executeDeclaration(node: AST.VariableDeclarationNode) {
-        if (this.environment.has(node.name)) {
+        if (this.hasVariableInCurrentScope(node.name)) {
             throw new Error(`Runtime Error: Variable '${node.name}' is already declared`);
         }
         if (node.name.toLowerCase() === "pi") {
@@ -226,7 +316,7 @@ export class Interpreter {
             const rawValue = await this.evaluateExpression(node.initializer);
             const coercedValue = this.coerceToType(rawValue, node.declaredType, node.name);
 
-            this.environment.set(node.name, {
+            this.declareVariable(node.name, {
                 value: coercedValue,
                 declaredType: node.declaredType,
                 initialized: true,
@@ -234,7 +324,7 @@ export class Interpreter {
             });
         }
         else {
-            this.environment.set(node.name, {
+            this.declareVariable(node.name, {
                 value: undefined,
                 declaredType: node.declaredType,
                 initialized: false,
@@ -254,7 +344,40 @@ export class Interpreter {
                 throw new Error("Runtime Error: Cannot assign to reserved constant 'pi'");
             }
 
-            const existing = this.environment.get(name);
+            // Inside a function: assignment is local by default
+            if (this.isInsideFunctionScope()) {
+                const localExisting = this.currentScope().get(name);
+
+                if (localExisting) {
+                    if (localExisting.isConstant) {
+                        throw new Error(`Runtime Error: Cannot reassign constant '${name}'`);
+                    }
+
+                    this.assertValidFSuffix(node.value, localExisting.declaredType, name);
+
+                    const coercedValue = this.coerceToType(rawValue, localExisting.declaredType, name);
+
+                    this.setVariableInCurrentScope(name, {
+                        value: coercedValue,
+                        declaredType: localExisting.declaredType,
+                        initialized: true,
+                        isConstant: localExisting.isConstant
+                    });
+                } else {
+                    this.assertValidFSuffix(node.value, undefined, name);
+
+                    this.setVariableInCurrentScope(name, {
+                        value: rawValue,
+                        initialized: true,
+                        isConstant: false
+                    });
+                }
+
+                return;
+            }
+
+            // Global scope: preserve existing behaviour
+            const existing = this.getVariable(name);
 
             if (existing) {
                 if (existing.isConstant) {
@@ -265,7 +388,7 @@ export class Interpreter {
 
                 const coercedValue = this.coerceToType(rawValue, existing.declaredType, name);
 
-                this.environment.set(name, {
+                this.assignVariable(name, {
                     value: coercedValue,
                     declaredType: existing.declaredType,
                     initialized: true,
@@ -277,8 +400,7 @@ export class Interpreter {
 
             this.assertValidFSuffix(node.value, undefined, name);
 
-            // Implicit variable creation
-            this.environment.set(name, {
+            this.assignVariable(name, {
                 value: rawValue,
                 initialized: true,
                 isConstant: false
@@ -299,7 +421,7 @@ export class Interpreter {
                 throw new Error("Runtime Error: Cannot assign to reserved constant 'pi'");
             }
 
-            const variable = this.environment.get(arrayName);
+            const variable = this.getVariable(arrayName);
 
             if (!variable) {
                 throw new Error(`Runtime Error: Variable '${arrayName}' is not defined`);
@@ -347,11 +469,10 @@ export class Interpreter {
     private async executeUpdateStatement(node: AST.UpdateStatementNode) {
         const name = node.argument.name;
 
-        if (!this.environment.has(name)) {
+        const currentVar = this.getVariable(name);
+        if (!currentVar) {
             throw new Error(`Runtime Error: Variable '${name}' is not defined`);
         }
-
-        const currentVar = this.environment.get(name)!;
 
         if (currentVar.isConstant) {
             throw new Error(`Runtime Error: Cannot update constant '${name}'`);
@@ -365,7 +486,7 @@ export class Interpreter {
 
         const newValue = node.operator === TokenType.DOUBLE_PLUS ? currentValue + 1 : currentValue - 1;
 
-        this.environment.set(name, {
+        this.assignVariable(name, {
             value: newValue,
             declaredType: currentVar.declaredType,
             initialized: true,
@@ -443,11 +564,12 @@ export class Interpreter {
     }
 
     private async executeFor(node: AST.ForNode) {
-        // NEW: range-based for (Python-style)
+        // Range-based for
         if (node.range) {
             const variable = node.range.variable;
 
-            if (this.environment.has(variable) && this.environment.get(variable)!.isConstant) {
+            const existing = this.getVariable(variable);
+            if (existing?.isConstant) {
                 throw new Error(`Runtime Error: Cannot use constant '${variable}' as a for-loop variable`);
             }
 
@@ -462,18 +584,31 @@ export class Interpreter {
                 throw new Error("Math Error: for-range step cannot be 0");
             }
 
-            // Adjust start if start is EXCLUSIVE (move one step in the step direction)
             if (!node.range.startInclusive) {
                 start = start + (step > 0 ? 1 : -1);
             }
 
-            // Set initial loop variable
-            this.environment.set(variable, {
-                value: start,
-                declaredType: "int",
-                initialized: true,
-                isConstant: false
-            });
+            // Loop variable should live in current scope, not forcibly in global scope
+            if (this.currentScope().has(variable)) {
+                const current = this.currentScope().get(variable)!;
+                if (current.isConstant) {
+                    throw new Error(`Runtime Error: Cannot use constant '${variable}' as a for-loop variable`);
+                }
+
+                this.currentScope().set(variable, {
+                    value: start,
+                    declaredType: "int",
+                    initialized: true,
+                    isConstant: false
+                });
+            } else {
+                this.declareVariable(variable, {
+                    value: start,
+                    declaredType: "int",
+                    initialized: true,
+                    isConstant: false
+                });
+            }
 
             const withinBounds = (i: number) => {
                 if (step > 0) {
@@ -485,29 +620,39 @@ export class Interpreter {
 
             let iter = 0;
 
-            while (withinBounds(this.environment.get(variable)!.value)) {
+            while (true) {
+                const loopVar = this.getVariable(variable);
+                if (!loopVar) {
+                    throw new Error(`Runtime Error: Loop variable '${variable}' is not defined`);
+                }
+
+                if (!withinBounds(loopVar.value)) {
+                    break;
+                }
+
                 try {
                     for (const stmt of node.body) {
                         await this.executeStatement(stmt);
                     }
                 } catch (e) {
                     if (e instanceof ContinueSignal) {
-                    }
-                    else if (e instanceof BreakSignal) {
+                    } else if (e instanceof BreakSignal) {
                         break;
-                    }
-                    else {
+                    } else {
                         throw e;
                     }
                 }
 
-                // i = i + step
-                const current = this.environment.get(variable)!.value;
-                this.environment.set(variable, {
-                    value: current + step,
+                const current = this.getVariable(variable);
+                if (!current) {
+                    throw new Error(`Runtime Error: Loop variable '${variable}' is not defined`);
+                }
+
+                this.assignVariable(variable, {
+                    value: current.value + step,
                     declaredType: "int",
                     initialized: true,
-                    isConstant: false 
+                    isConstant: false
                 });
 
                 iter++;
@@ -519,7 +664,7 @@ export class Interpreter {
             return;
         }
 
-        // Existing C-style for loop
+        // C-style for loop
         if (node.initializer) {
             await this.executeStatement(node.initializer);
         }
@@ -533,11 +678,9 @@ export class Interpreter {
                 }
             } catch (e) {
                 if (e instanceof ContinueSignal) {
-                }
-                else if (e instanceof BreakSignal) {
+                } else if (e instanceof BreakSignal) {
                     break;
-                }
-                else {
+                } else {
                     throw e;
                 }
             }
@@ -549,7 +692,7 @@ export class Interpreter {
             iter++;
             if (iter % 200 === 0) {
                 await this.yieldToBrowser();
-            }       
+            }
         }
     }
 
@@ -566,18 +709,35 @@ export class Interpreter {
             throw new Error(`Runtime Error: foreach target must be an array or string`);
         }
 
-        if (this.environment.has(node.variable) && this.environment.get(node.variable)!.isConstant) {
+        const existing = this.getVariable(node.variable);
+        if (existing?.isConstant) {
             throw new Error(`Runtime Error: Cannot use constant '${node.variable}' as a foreach loop variable`);
         }
 
         let iter = 0;
 
         for (const value of values) {
-            this.environment.set(node.variable, {
-                value,
-                initialized: true,
-                isConstant: false
-            });
+            // Keep foreach variable in current scope
+            if (this.currentScope().has(node.variable)) {
+                const current = this.currentScope().get(node.variable)!;
+
+                if (current.isConstant) {
+                    throw new Error(`Runtime Error: Cannot use constant '${node.variable}' as a foreach loop variable`);
+                }
+
+                this.currentScope().set(node.variable, {
+                    value,
+                    declaredType: current.declaredType,
+                    initialized: true,
+                    isConstant: false
+                });
+            } else {
+                this.declareVariable(node.variable, {
+                    value,
+                    initialized: true,
+                    isConstant: false
+                });
+            }
 
             try {
                 for (const stmt of node.body) {
@@ -585,11 +745,9 @@ export class Interpreter {
                 }
             } catch (e) {
                 if (e instanceof ContinueSignal) {
-                }
-                else if (e instanceof BreakSignal) {
+                } else if (e instanceof BreakSignal) {
                     break;
-                }
-                else {
+                } else {
                     throw e;
                 }
             }
@@ -683,6 +841,14 @@ export class Interpreter {
 
     private async yieldToBrowser() {
         await new Promise<void>(resolve => setTimeout(resolve, 0));
+    }
+
+    private async maybeYieldToBrowser(): Promise<void> {
+        this.stepsSinceYield++;
+
+        if (this.stepsSinceYield % 200 === 0) {
+            await this.yieldToBrowser();
+        }
     }
 
     private requireInteger(value: any, context: string): number {
@@ -821,11 +987,10 @@ export class Interpreter {
                 if (node.name.toLowerCase() === "pi") {
                     return Math.PI;
                 }
-                if (!this.environment.has(node.name)) {
+                const variable = this.getVariable(node.name);
+                if (!variable) {
                     throw new Error(`Runtime Error: Variable '${node.name}' is not defined`);
                 }
-
-                const variable = this.environment.get(node.name)!;
                 if (!variable.initialized) {
                     throw new Error(`Runtime Error: Variable '${node.name}' has been declared but not initialised`);
                 }
@@ -1070,6 +1235,60 @@ export class Interpreter {
 
     private toUserIndex(internalIndex: number): number {
         return config.arrayBase === 1 ? internalIndex + 1 : internalIndex;
+    }
+
+    private async callUserFunction(fn: UserFunction, args: AST.ExpressionNode[]): Promise<any> {
+        await this.maybeYieldToBrowser();
+
+        if (this.recursionDepth >= this.maxRecursionDepth) {
+            throw new Error("Runtime Error: Stack overflow - maximum recursion depth exceeded");
+        }
+
+        this.recursionDepth++;
+
+        try {
+            const evaluatedArgs = await Promise.all(args.map(arg => this.evaluateExpression(arg)));
+
+            if (evaluatedArgs.length !== fn.params.length) {
+                throw new Error(
+                    `Runtime Error: Function '${fn.name}()' takes ${fn.params.length} argument(s) but ${evaluatedArgs.length} were given`
+                );
+            }
+
+            this.pushScope();
+
+            try {
+                for (let i = 0; i < fn.params.length; i++) {
+                    const param = fn.params[i];
+                    const rawValue = evaluatedArgs[i];
+                    const coercedValue = this.coerceToType(rawValue, param.declaredType, param.name);
+
+                    this.declareVariable(param.name, {
+                        value: coercedValue,
+                        declaredType: param.declaredType,
+                        initialized: true,
+                        isConstant: false
+                    });
+                }
+
+                for (const stmt of fn.body) {
+                    await this.executeStatement(stmt);
+                }
+
+                return null;
+            }
+            catch (e) {
+                if (e instanceof ReturnSignal) {
+                    return e.value;
+                }
+                throw e;
+            }
+            finally {
+                this.popScope();
+            }
+        } finally {
+            this.recursionDepth--;
+        }
     }
 
     // Built-in functions that can be called in global form (e.g. substring(str,2,5)) or method form (e.g. str.substring(2,5))
@@ -1537,11 +1756,11 @@ export class Interpreter {
             throw new Error("Runtime Error: Cannot update constant 'pi'");
         }
 
-        if (!this.environment.has(name)) {
+        const currentVar = this.getVariable(name)!;
+
+        if (!currentVar) {
             throw new Error(`Runtime Error: Variable '${name}' is not defined`);
         }
-
-        const currentVar = this.environment.get(name)!;
 
         if (currentVar.isConstant) {
             throw new Error(`Runtime Error: Cannot update constant '${name}'`);
@@ -1559,7 +1778,7 @@ export class Interpreter {
         const delta = node.operator === "DOUBLE_PLUS" ? 1 : -1;
         const newValue = current + delta;
 
-        this.environment.set(name, {
+        this.assignVariable(name, {
             value: newValue,
             declaredType: currentVar.declaredType,
             initialized: true,
@@ -1570,13 +1789,19 @@ export class Interpreter {
     }
 
     private async evaluateCallExpression(node: AST.CallExpressionNode): Promise<any> {
-        // Global call: substring(str,2,5)
+        // Global call: substring(str,2,5) or userFunction(...)
         if (node.callee.type === "Identifier") {
             const funcName = node.callee.name.toLowerCase();
 
             if (["append", "pop", "insert", "remove", "subarray"].includes(funcName)) {
                 return await this.callArrayBuiltinGlobal(funcName, node.args);
             }
+
+            const userFn = this.functions.get(funcName);
+            if (userFn) {
+                return await this.callUserFunction(userFn, node.args);
+            }
+
             return await this.callBuiltin(funcName, undefined, node.args);
         }
 
@@ -1587,6 +1812,7 @@ export class Interpreter {
             if (["append", "pop", "insert", "remove", "subarray"].includes(methodName)) {
                 return await this.callArrayBuiltinMethod(methodName, node.callee.object, node.args);
             }
+
             const receiver = await this.evaluateExpression(node.callee.object);
             return await this.callBuiltin(methodName, receiver, node.args);
         }
@@ -1750,12 +1976,11 @@ export class Interpreter {
         }
 
         const name = expr.name;
+        const variable = this.getVariable(name)!;
 
-        if (!this.environment.has(name)) {
+        if (!variable) {
             throw new Error(`Runtime Error: Variable '${name}' is not defined`);
         }
-
-        const variable = this.environment.get(name)!;
 
         if (!variable.initialized) {
             throw new Error(`Runtime Error: Variable '${name}' has been declared but not initialised`);

@@ -19,6 +19,7 @@ export interface UserConfig {
     breakSyntax: string;
     continueSyntax: string;
     passSyntax: string;
+    functionSyntax: string;
     lengthSyntax: string;
     substringSyntax: string;
     includesSyntax: string;
@@ -47,6 +48,7 @@ const DEFAULT_CONFIG: UserConfig = {
     breakSyntax: "break",
     continueSyntax: "continue",
     passSyntax: "pass",
+    functionSyntax: "function",
     lengthSyntax: "len",
     substringSyntax: "substring",
     includesSyntax: "includes",
@@ -81,7 +83,7 @@ function sanitizeString(value: unknown, fallback: string): string {
     return trimmed.length > 0 ? trimmed : fallback;
 }
 
-function sanitizeKeywordFields( parsed: any, defaults: UserConfig): Pick<UserConfig, "varSyntax" | "constSyntax" | "intSyntax" | "floatSyntax" | "charSyntax" | "stringSyntax" | "boolSyntax" | "inputSyntax" | "printSyntax" | "switchSyntax" | "foreachSyntax" | "breakSyntax" | "continueSyntax" | "passSyntax" | "lengthSyntax" | "substringSyntax" | "includesSyntax" | "meanSyntax"> {
+function sanitizeKeywordFields( parsed: any, defaults: UserConfig): Pick<UserConfig, "varSyntax" | "constSyntax" | "intSyntax" | "floatSyntax" | "charSyntax" | "stringSyntax" | "boolSyntax" | "inputSyntax" | "printSyntax" | "switchSyntax" | "foreachSyntax" | "breakSyntax" | "continueSyntax" | "passSyntax" | "functionSyntax" | "lengthSyntax" | "substringSyntax" | "includesSyntax" | "meanSyntax"> {
     return {
         varSyntax: sanitizeString(parsed.varSyntax, defaults.varSyntax),
         constSyntax: sanitizeString(parsed.constSyntax, defaults.constSyntax),
@@ -97,6 +99,7 @@ function sanitizeKeywordFields( parsed: any, defaults: UserConfig): Pick<UserCon
         breakSyntax: sanitizeString(parsed.breakSyntax, defaults.breakSyntax),
         continueSyntax: sanitizeString(parsed.continueSyntax, defaults.continueSyntax),
         passSyntax: sanitizeString(parsed.passSyntax, defaults.passSyntax),
+        functionSyntax: sanitizeString(parsed.functionSyntax, defaults.functionSyntax),
         lengthSyntax: sanitizeString(parsed.lengthSyntax, defaults.lengthSyntax),
         substringSyntax: sanitizeString(parsed.substringSyntax, defaults.substringSyntax),
         includesSyntax: sanitizeString(parsed.includesSyntax, defaults.includesSyntax),

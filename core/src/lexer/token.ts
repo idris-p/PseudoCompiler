@@ -32,6 +32,10 @@ export enum TokenType {
     LOOP = "LOOP",
 
     END = "END",
+
+    FUNCTION = "FUNCTION",
+    RETURN = "RETURN",
+    END_FUNCTION = "END_FUNCTION",
     
     PRINT = "PRINT",
     INPUT = "INPUT",

@@ -24,6 +24,7 @@ const STATIC_KEYWORDS = [
     "until",
     "loop",
     "end",
+    "return",
     "mod",
     "div",
     "and",
@@ -150,7 +151,9 @@ function getDynamicKeywords(): string[] {
         config.foreachSyntax,
         config.breakSyntax,
         config.continueSyntax,
-        config.passSyntax
+        config.passSyntax,
+        config.functionSyntax,
+        "end" + config.functionSyntax
     ];
 }
 

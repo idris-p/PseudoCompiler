@@ -30,7 +30,9 @@ export type StatementNode =
     | DoUntilNode
     | PassNode
     | ContinueNode
-    | BreakNode;
+    | BreakNode
+    | ReturnNode
+    | FunctionDeclarationNode;
 
 export type ExpressionNode =
     | InputNode
@@ -73,6 +75,18 @@ export type VariableAssignmentNode = {
 export type ExpressionStatementNode = {
     type: "ExpressionStatement";
     expression: ExpressionNode;
+};
+
+export type FunctionParameterNode = {
+    name: string;
+    declaredType?: PseudoType;
+};
+
+export type FunctionDeclarationNode = {
+    type: "FunctionDeclaration";
+    name: string;
+    params: FunctionParameterNode[];
+    body: StatementNode[];
 };
 
 export interface UpdateStatementNode {
@@ -216,6 +230,11 @@ export type ContinueNode = {
 
 export type BreakNode = {
     type: "Break";
+};
+
+export type ReturnNode = {
+    type: "Return";
+    value?: ExpressionNode;
 };
 
 export type UpdateExpressionNode = {

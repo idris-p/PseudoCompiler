@@ -13,7 +13,8 @@ enum BlockType {
     FOR,
     FOREACH,
     WHILE,
-    DO
+    DO,
+    FUNCTION
 }
 
 // Parser Class - converts tokens into AST
@@ -141,6 +142,13 @@ export class Parser {
                 return;
             }
         }
+
+        if (blockType === BlockType.FUNCTION) {
+            if (this.match(TokenType.END_FUNCTION, TokenType.END)) {
+                this.consumeStatementTerminator();
+                return;
+            }
+        }
     }
 
     private beginBlock(blockType: BlockType, line: number, column: number): void {
@@ -218,6 +226,10 @@ export class Parser {
             type === TokenType.STRING_TYPE ||
             type === TokenType.BOOL_TYPE
         );
+    }
+
+    private isInsideFunction(): boolean {
+        return this.blockStack.includes(BlockType.FUNCTION);
     }
 
     private skipNewlines(): void {
@@ -321,6 +333,12 @@ export class Parser {
         }
         if (this.match(TokenType.DO)) {
             return this.parseDoStatement();
+        }
+        if (this.match(TokenType.FUNCTION)) {
+            return this.parseFunctionDeclaration();
+        }
+        if (this.match(TokenType.RETURN)) {
+            return this.parseReturnStatement();
         }
         if (this.checkType(TokenType.VAR) || this.checkType(TokenType.CONST) || this.checkType(TokenType.ARRAY) || this.isTypeToken(this.peek().type)) {
             return this.parseDeclaration();
@@ -968,6 +986,80 @@ export class Parser {
         }
 
         throw new Error(`Syntax Error: Expected 'while' or 'until' after do-block at line ${this.peek().line}, column ${this.peek().column}`);
+    }
+
+    private parseFunctionDeclaration(): AST.FunctionDeclarationNode {
+        const name = this.consume(
+            TokenType.IDENTIFIER,
+            `Syntax Error: Expected function name at line ${this.peek().line}, column ${this.peek().column}`
+        ).value!;
+
+        this.consume(
+            TokenType.LEFT_PAREN,
+            `Syntax Error: Expected '(' after function name at line ${this.peek().line}, column ${this.peek().column}`
+        );
+
+        const params: AST.FunctionParameterNode[] = [];
+
+        if (!this.checkType(TokenType.RIGHT_PAREN)) {
+            do {
+                let declaredType: AST.PseudoType | undefined;
+
+                if (this.isTypeToken(this.peek().type)) {
+                    declaredType = this.parseScalarType(this.advance());
+                }
+
+                const paramName = this.consume(
+                    TokenType.IDENTIFIER,
+                    `Syntax Error: Expected parameter name at line ${this.peek().line}, column ${this.peek().column - this.peek().value!.length}`
+                ).value!;
+
+                params.push({
+                    name: paramName,
+                    declaredType
+                });
+            } while (this.match(TokenType.COMMA));
+        }
+
+        this.consume(
+            TokenType.RIGHT_PAREN,
+            `Syntax Error: Expected ')' after function parameters at line ${this.peek().line}, column ${this.peek().column}`
+        );
+
+        const body = this.parseBlock(BlockType.FUNCTION);
+        this.consumeBlockTerminator(BlockType.FUNCTION);
+
+        return {
+            type: "FunctionDeclaration",
+            name,
+            params,
+            body
+        };
+    }
+
+    private parseReturnStatement(): AST.ReturnNode {
+        if (!this.isInsideFunction()) {
+            throw new Error(`Syntax Error: 'return' used outside of a function at line ${this.previous().line}, column ${this.previous().column - this.previous().value!.length}`);
+        }
+
+        let value: AST.ExpressionNode | undefined;
+
+        if (
+            !this.checkType(TokenType.NEWLINE) &&
+            !this.checkType(TokenType.SEMI_COLON) &&
+            !this.checkType(TokenType.DEDENT) &&
+            !this.checkType(TokenType.RIGHT_CURLY) &&
+            !this.isAtEnd()
+        ) {
+            value = this.parseExpression();
+        }
+
+        this.consumeStatementTerminator();
+
+        return {
+            type: "Return",
+            value
+        };
     }
 
     private parsePassStatement(): AST.PassNode {
