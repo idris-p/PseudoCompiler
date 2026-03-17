@@ -3,7 +3,7 @@ import { Parser } from "./parser/parser.js"
 import { Interpreter, RuntimeIO } from "./interpreter/interpreter.js"
 import { config } from "./loader.js"
 
-export async function runPseudoCode(source: string, io: RuntimeIO) {
+export async function runPseudoCode(source: string, io: RuntimeIO, cancelToken?: { cancelled: boolean}) {
     source = source.replace(/\t/g, "    "); // Replace tabs with 4 spaces for consistency
 
     // console.log("Source Code:")
@@ -21,12 +21,6 @@ export async function runPseudoCode(source: string, io: RuntimeIO) {
     // console.log("AST:")
     // console.log(JSON.stringify(ast, null, 2))
 
-    const interpreter = new Interpreter(io)
+    const interpreter = new Interpreter(io, cancelToken)
     await interpreter.run(ast)
 }
-
-// runPseudoCode(`
-// for (i = 0; i < 5; i++)
-//     print(i)
-// endfor
-// `);

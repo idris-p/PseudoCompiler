@@ -9,6 +9,7 @@ export type ExecutionResult = {
 
 class BreakSignal {}
 class ContinueSignal {}
+export class StopSignal {}
 
 class ReturnSignal {
     constructor(public value: any) {}
@@ -32,6 +33,10 @@ type UserFunction = {
     body: AST.StatementNode[];
 };
 
+type CancelToken = {
+    cancelled: boolean;
+};
+
 
 // Interpreter Class - executes the AST
 export class Interpreter {
@@ -39,13 +44,15 @@ export class Interpreter {
     private scopes: Map<string, RuntimeVariable>[] = [this.environment];
     private functions: Map<string, UserFunction> = new Map();
     private io: RuntimeIO;
+    private cancelToken?: CancelToken;
 
     private stepsSinceYield = 0;
     private recursionDepth = 0;
     private readonly maxRecursionDepth = 1000;
 
-    constructor(io: RuntimeIO) {
+    constructor(io: RuntimeIO, cancelToken?: CancelToken) {
         this.io = io;
+        this.cancelToken = cancelToken;
     }
 
     async run(program: AST.ProgramNode): Promise<ExecutionResult> {
@@ -56,9 +63,16 @@ export class Interpreter {
         this.recursionDepth = 0;
 
         for (const statement of program.body) {
+            this.throwIfStopped();
             await this.executeStatement(statement);
         }
         return { output: [], environment: this.environment };
+    }
+
+    private throwIfStopped(): void {
+        if (this.cancelToken?.cancelled) {
+            throw new StopSignal();
+        }
     }
 
     private currentScope(): Map<string, RuntimeVariable> {
@@ -117,6 +131,7 @@ export class Interpreter {
     }
 
     private async executeStatement(node: AST.StatementNode): Promise<void> {
+        this.throwIfStopped();
         await this.maybeYieldToBrowser();
 
         switch (node.type) {
@@ -840,10 +855,14 @@ export class Interpreter {
     }
 
     private async yieldToBrowser() {
+        this.throwIfStopped();
         await new Promise<void>(resolve => setTimeout(resolve, 0));
+        this.throwIfStopped();
     }
 
     private async maybeYieldToBrowser(): Promise<void> {
+        this.throwIfStopped();
+
         this.stepsSinceYield++;
 
         if (this.stepsSinceYield % 200 === 0) {
@@ -965,6 +984,8 @@ export class Interpreter {
     }
 
     private async evaluateExpression(node: AST.ExpressionNode): Promise<any> {
+        this.throwIfStopped();
+
         switch (node.type) {
             case "Input": {
                 let prompt: string | undefined;
@@ -1238,6 +1259,7 @@ export class Interpreter {
     }
 
     private async callUserFunction(fn: UserFunction, args: AST.ExpressionNode[]): Promise<any> {
+        this.throwIfStopped();
         await this.maybeYieldToBrowser();
 
         if (this.recursionDepth >= this.maxRecursionDepth) {
