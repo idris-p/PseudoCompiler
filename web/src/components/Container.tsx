@@ -5,10 +5,12 @@ import type { TerminalLine } from "../App";
 import CodeEditor from "./CodeEditor";
 import Terminal from "./Terminal";
 import ConfigMenu from "./ConfigMenu";
+import Docs from "./Docs";
 import type Monaco from "monaco-editor";
 
 export default function Container({
     showConfig,
+    showDocs,
     code,
     setCode,
     terminalOutput,
@@ -17,6 +19,7 @@ export default function Container({
     setPendingInput
 }: {
     showConfig: boolean,
+    showDocs: boolean,
     code: string,
     setCode: React.Dispatch<React.SetStateAction<string>>,
     terminalOutput: TerminalLine[],
@@ -44,7 +47,7 @@ export default function Container({
 
     return (
         <div className="border-4 rounded-xl border-gray-400 h-full w-full overflow-hidden">
-            {!showConfig &&
+            {!showConfig && !showDocs &&
                 <Split className="flex h-full" sizes={[60, 40]} minSize={200} gutterSize={8}>
                     <CodeEditor
                         theme={theme}
@@ -58,6 +61,10 @@ export default function Container({
 
             {showConfig &&
                 <ConfigMenu monaco={monacoInstance} />
+            }
+
+            {showDocs &&
+                <Docs />
             }
         </div>
     );
