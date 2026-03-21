@@ -130,6 +130,62 @@ export class Interpreter {
         this.currentScope().set(name, variable);
     }
 
+    private isArrayType(type: AST.PseudoType | undefined): type is Extract<AST.PseudoType, { type: "array" }> {
+        return typeof type === "object" && type !== null && type.type === "array";
+    }
+
+    private getDefaultValueForScalarType(type?: AST.ScalarType): any {
+        switch (type) {
+            case "int":
+            case "float":
+                return 0;
+            case "char":
+                return "\0";
+            case "string":
+                return "";
+            case "bool":
+                return false;
+            default:
+                return null;
+        }
+    }
+
+    private createDefaultArrayValue(arrayType: Extract<AST.PseudoType, { type: "array" }>, variableName: string): any[] {
+        if (arrayType.fixedLength === undefined) {
+            throw new Error(
+                `Runtime Error: Array variable '${variableName}' must be initialised before use`
+            );
+        }
+
+        return Array.from(
+            { length: arrayType.fixedLength },
+            () => this.getDefaultValueForScalarType(arrayType.elementType)
+        );
+    }
+
+    private assertFixedArrayLength(length: number, declaredType: AST.PseudoType | undefined, variableName: string): void {
+        if (!this.isArrayType(declaredType)) return;
+        if (declaredType.fixedLength === undefined) return;
+
+        if (length !== declaredType.fixedLength) {
+            throw new Error(
+                `Runtime Error: Array '${variableName}' has fixed length ${declaredType.fixedLength}, but got length ${length}`
+            );
+        }
+    }
+
+    private isFixedSizeArrayVariable(variable: RuntimeVariable): boolean {
+        return this.isArrayType(variable.declaredType) && variable.declaredType.fixedLength !== undefined;
+    }
+
+    private assertCanResizeArray(variable: RuntimeVariable, name: string, fnName: string): void {
+        if (this.isFixedSizeArrayVariable(variable)) {
+            throw new Error(
+                `Runtime Error: Cannot change the length of fixed-size array '${name}' using ${fnName}()`
+            );
+        }
+    }
+
     private async executeStatement(node: AST.StatementNode): Promise<void> {
         this.throwIfStopped();
         await this.maybeYieldToBrowser();
@@ -210,6 +266,12 @@ export class Interpreter {
         if (typeof declaredType === "object" && declaredType.type === "array") {
             if (!Array.isArray(value)) {
                 throw new Error(`Type Error: Cannot assign non-array value '${value}' to array variable '${variableName}'`);
+            }
+
+            if (declaredType.fixedLength !== undefined && value.length !== declaredType.fixedLength) {
+                throw new Error(
+                    `Runtime Error: Array '${variableName}' has fixed length ${declaredType.fixedLength}, but got length ${value.length}`
+                );
             }
 
             // Untyped array: accept as-is
@@ -321,7 +383,7 @@ export class Interpreter {
         if (this.hasVariableInCurrentScope(node.name)) {
             throw new Error(`Runtime Error: Variable '${node.name}' is already declared`);
         }
-        if (node.name.toLowerCase() === "pi") {
+        if (node.name.toLowerCase() === "pi" || node.name === "π") {
             throw new Error("Runtime Error: Cannot declare variable 'pi' because it is a reserved constant");
         }
 
@@ -355,7 +417,7 @@ export class Interpreter {
         if (node.target.type === "Identifier") {
             const name = node.target.name;
 
-            if (name.toLowerCase() === "pi") {
+            if (name.toLowerCase() === "pi" || name === "π") {
                 throw new Error("Runtime Error: Cannot assign to reserved constant 'pi'");
             }
 
@@ -432,7 +494,7 @@ export class Interpreter {
 
             const arrayName = node.target.object.name;
 
-            if (arrayName.toLowerCase() === "pi") {
+            if (arrayName.toLowerCase() === "pi" || arrayName === "π") {
                 throw new Error("Runtime Error: Cannot assign to reserved constant 'pi'");
             }
 
@@ -1005,7 +1067,7 @@ export class Interpreter {
             case "ArrayLiteral":
                 return await Promise.all(node.elements.map(element => this.evaluateExpression(element)));
             case "Identifier":
-                if (node.name.toLowerCase() === "pi") {
+                if (node.name.toLowerCase() === "pi" || node.name === "π") {
                     return Math.PI;
                 }
                 const variable = this.getVariable(node.name);
@@ -1196,6 +1258,49 @@ export class Interpreter {
 
     private isNumberValue(value: any): boolean {
         return typeof value === "number" && Number.isFinite(value);
+    }
+
+    private buildRangeArray(startRaw: any, endRaw: any, stepRaw: any = 1): number[] {
+        let start = this.requireInteger(startRaw, "range() start");
+        const end = this.requireInteger(endRaw, "range() end");
+        const step = this.requireInteger(stepRaw, "range() step");
+
+        if (step === 0) {
+            throw new Error("Math Error: range() step cannot be 0");
+        }
+
+        const lowerInclusive = config.forInclusive[0];
+        const upperInclusive = config.forInclusive[1];
+
+        if (!lowerInclusive) {
+            start += step > 0 ? 1 : -1;
+        }
+
+        const out: number[] = [];
+
+        if (step > 0) {
+            if (upperInclusive) {
+                for (let i = start; i <= end; i += step) {
+                    out.push(i);
+                }
+            } else {
+                for (let i = start; i < end; i += step) {
+                    out.push(i);
+                }
+            }
+        } else {
+            if (upperInclusive) {
+                for (let i = start; i >= end; i += step) {
+                    out.push(i);
+                }
+            } else {
+                for (let i = start; i > end; i += step) {
+                    out.push(i);
+                }
+            }
+        }
+
+        return out;
     }
 
     private getArrayLike(value: any, fnName: string): any[] {
@@ -1739,6 +1844,22 @@ export class Interpreter {
                     return nums.reduce((total, v) => total * v, 1);
                 }
             },
+            ["range"]: {
+                params: [1, 2, 3],
+                allowMember: false,
+                displayName: () => "range",
+                fn: (a) => {
+                    if (a.length === 1) {
+                        return this.buildRangeArray(0, a[0], 1);
+                    }
+                    else if (a.length === 2) {
+                        return this.buildRangeArray(a[0], a[1], 1);
+                    }
+                    else {
+                        return this.buildRangeArray(a[0], a[1], a[2]);
+                    }
+                }
+            },
         };
 
         const builtin = builtins[nameLower];
@@ -1774,7 +1895,7 @@ export class Interpreter {
 
         const name = node.argument.name;
 
-        if (name.toLowerCase() === "pi") {
+        if (name.toLowerCase() === "pi" || name === "π") {
             throw new Error("Runtime Error: Cannot update constant 'pi'");
         }
 
@@ -2067,6 +2188,7 @@ export class Interpreter {
                 this.assertArgCount("append", args.length, [2]);
 
                 const { name, variable, array } = this.requireMutableArrayVariable(args[0], "append");
+                this.assertCanResizeArray(variable, name, "append");
                 const rawValue = await this.evaluateExpression(args[1]);
                 const coerced = this.coerceArrayElementForVariable(variable, rawValue, `${name}[${array.length}]`);
                 array.push(coerced);
@@ -2076,7 +2198,8 @@ export class Interpreter {
             case "pop": {
                 this.assertArgCount("pop", args.length, [1]);
 
-                const { array } = this.requireMutableArrayVariable(args[0], "pop");
+                const { name, variable, array } = this.requireMutableArrayVariable(args[0], "pop");
+                this.assertCanResizeArray(variable, name, "pop");
 
                 if (array.length === 0) {
                     throw new Error("Runtime Error: Cannot pop() from an empty array");
@@ -2089,6 +2212,7 @@ export class Interpreter {
                 this.assertArgCount("insert", args.length, [3]);
 
                 const { name, variable, array } = this.requireMutableArrayVariable(args[0], "insert");
+                this.assertCanResizeArray(variable, name, "insert");
                 const indexRaw = await this.evaluateExpression(args[1]);
                 const index = this.normalizeArrayIndex(indexRaw, array.length, "Insert index", true);
                 const rawValue = await this.evaluateExpression(args[2]);
@@ -2101,7 +2225,8 @@ export class Interpreter {
             case "remove": {
                 this.assertArgCount("remove", args.length, [2]);
 
-                const { array } = this.requireMutableArrayVariable(args[0], "remove");
+                const { name, variable, array } = this.requireMutableArrayVariable(args[0], "remove");
+                this.assertCanResizeArray(variable, name, "remove");
                 const indexRaw = await this.evaluateExpression(args[1]);
                 const index = this.normalizeArrayIndex(indexRaw, array.length, "Remove index");
 

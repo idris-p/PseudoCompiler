@@ -2,12 +2,13 @@ import { Token, TokenType } from "../lexer/token";
 
 export type ScalarType = "int" | "float" | "char" | "string" | "bool";
 
-export type PseudoType = 
-    | ScalarType
-    | { 
-        type: "array";
-        elementType?: ScalarType
-    };
+export type ArrayType = {
+    type: "array";
+    elementType?: ScalarType;
+    fixedLength?: number;
+};
+
+export type PseudoType = ScalarType | ArrayType;
 
 export type Node =
     | StatementNode

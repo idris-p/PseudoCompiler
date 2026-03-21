@@ -70,10 +70,11 @@ const STATIC_FUNCTIONS = [
     "sum",
     "median",
     "mode",
-    "product"
+    "product",
+    "range"
 ];
 
-const CONSTANTS = ["pi"];
+const CONSTANTS = ["pi", "π"];
 const BOOLEANS = ["true", "false"];
 
 export function registerPseudoLanguage(monacoInstance: typeof Monaco) {
@@ -123,7 +124,7 @@ function buildWordRegex(values: string[]): RegExp {
         return /$a/;
     }
 
-    return new RegExp(`\\b(?:${pattern})\\b`);
+    return new RegExp(`(?<![A-Za-z0-9_])(?:${pattern})(?![A-Za-z0-9_])`, "i");
 }
 
 function buildLineStartRegex(values: Iterable<string>): RegExp {
@@ -322,6 +323,33 @@ function registerCompletionProvider(monacoInstance: typeof Monaco) {
                 // Foreach with parens: for (value : array) / for each (value : array)
                 for (const match of code.matchAll(/\bfor\b(?:\s+each)?\s*\(\s*([a-zA-Z_]\w*)\s*:/gi)) {
                     variableNames.add(match[1]);
+                }
+
+                // Function declarations: function foo(a, b) / function foo(int a, string[] names, int[3] arr)
+                const functionKeyword = escapeRegex(config.functionSyntax);
+
+                for (const match of code.matchAll(
+                    new RegExp(`\\b${functionKeyword}\\b\\s+[a-zA-Z_]\\w*\\s*\\(([^)]*)\\)`, "gi")
+                )) {
+                    const paramList = match[1].trim();
+                    if (!paramList) continue;
+
+                    for (const rawParam of paramList.split(",")) {
+                        const param = rawParam.trim();
+                        if (!param) continue;
+
+                        // Take the final identifier in the parameter chunk.
+                        // Works for:
+                        // x
+                        // int x
+                        // array nums
+                        // int[] nums
+                        // int[3] arr
+                        const nameMatch = param.match(/([a-zA-Z_]\w*)\s*$/);
+                        if (nameMatch) {
+                            variableNames.add(nameMatch[1]);
+                        }
+                    }
                 }
 
                 const variables = Array.from(variableNames);

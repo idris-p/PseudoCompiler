@@ -105,6 +105,12 @@ export class Lexer {
                 continue
             }
 
+            if (char === 'π') {
+                tokens.push(this.makeToken(TokenType.IDENTIFIER, "pi"))
+                this.advance()
+                continue
+            }
+
             // Strings
             if (char === '"' || char === "'") {
                 tokens.push(this.string(char))
