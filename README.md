@@ -5,6 +5,8 @@ A configurable pseudocode editor and interpreter for learning programming fundam
 This project enables beginners to explore core programming concepts without the overhead of strict language syntax. It provides a flexible pseudocode environment with customisable syntax and real-time execution.
 The goal is to separate thinking like a programmer from memorising syntax, allowing users to build confidence and problem-solving skills before transitioning to production languages.
 
+The project features a fully custom-built lexer, parser, abstract syntax tree (AST), and interpreter, all implemented from scratch.
+
 ---
 
 ## Screenshots
