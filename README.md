@@ -11,6 +11,7 @@ The project features a fully custom-built lexer, parser, abstract syntax tree (A
 
 ## Screenshots
 <img width="1920" height="1080" alt="Screenshot 2026-03-22 143600" src="https://github.com/user-attachments/assets/6c8f8e69-f7c4-4d45-9952-3ac3129d2d6f" />
+<img width="1920" height="1080" alt="image" src="https://github.com/user-attachments/assets/8bc24846-74f2-4215-bbf9-75d1ea87321e" />
 
 ---
 
