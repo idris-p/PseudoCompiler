@@ -54,10 +54,10 @@ export default function KeywordField({
                 placeholder={placeholder}
                 onChange={handleChange}
                 className={`w-1/2 p-2 border rounded ${
-                    error ? "border-red-500" : "border-gray-300"
+                    error ? "border-red-500" : "border-gray-300 dark:border-neutral-700"
                 }`}
             />
-
+    
             {error && (
                 <p className="text-red-500 text-sm mt-2">
                     {error}

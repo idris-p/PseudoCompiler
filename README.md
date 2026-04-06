@@ -23,7 +23,7 @@ The application is fully client-side and built using TypeScript and React with N
 Clone the repository and open the directory
 ```
 git clone https://github.com/idris-p/PseudoCompiler.git
-cd PseudoCompiler
+cd PseudoCompiler/web
 ```
 Install dependencies and run project
 ```
