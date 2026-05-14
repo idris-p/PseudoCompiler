@@ -16,6 +16,7 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
     const [forInclusiveUpper, setForInclusiveUpper] = useState(config.forInclusive[1]);
     const [arrayBase, setArrayBase] = useState(config.arrayBase);
     const [sliceUpperInclusive, setSliceUpperInclusive] = useState(config.sliceUpperInclusive);
+    const [contentsCollapsed, setContentsCollapsed] = useState(false);
 
     const sections = [
         { id: "general", label: "General" },
@@ -86,23 +87,42 @@ export default function ConfigMenu({ monaco }: ConfigMenuProps) {
         persistConfig();
     };
 
+    const scrollToSection = (sectionId: string) => {
+        document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+
     return (
         <div className="h-full bg-gray-50 dark:bg-neutral-800 text-gray-700 dark:text-gray-300 overflow-hidden">
             <div className="h-full max-w-7xl mx-auto p-4 md:p-6 flex gap-6">
-                <aside className="hidden md:block w-64 shrink-0">
+                <aside className={`hidden md:block shrink-0 ${contentsCollapsed ? "w-24" : "w-64"}`}>
                     <div className="sticky top-4 rounded-lg border border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-900/30 p-4">
-                        <h2 className="text-lg font-bold mb-3">Contents</h2>
-                        <nav className="space-y-1">
-                            {sections.map((section) => (
-                                <a
-                                    key={section.id}
-                                    href={`#${section.id}`}
-                                    className="block px-2 py-1 rounded text-sm hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
-                                >
-                                    {section.label}
-                                </a>
-                            ))}
-                        </nav>
+                        <div className={`flex items-center gap-2 ${contentsCollapsed ? "" : "justify-between mb-3"}`}>
+                            {!contentsCollapsed && <h2 className="text-lg font-bold">Contents</h2>}
+                            <button
+                                type="button"
+                                onClick={() => setContentsCollapsed(!contentsCollapsed)}
+                                className={`${contentsCollapsed ? "w-full" : ""} px-2 py-1 rounded font-extrabold hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer`}
+                            >
+                                {contentsCollapsed ? ">" : "<"}
+                            </button>
+                        </div>
+                        {!contentsCollapsed && (
+                            <nav className="space-y-1">
+                                {sections.map((section) => (
+                                    <a
+                                        key={section.id}
+                                        href={`#${section.id}`}
+                                        onClick={(event) => {
+                                            event.preventDefault();
+                                            scrollToSection(section.id);
+                                        }}
+                                        className="block px-2 py-1 rounded text-sm hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
+                                    >
+                                        {section.label}
+                                    </a>
+                                ))}
+                            </nav>
+                        )}
                     </div>
                 </aside>
 

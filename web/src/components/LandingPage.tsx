@@ -20,9 +20,11 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
                         <h1 className="mb-5 text-5xl font-bold leading-tight text-gray-900 dark:text-gray-100">
                             Edit and run pseudocode in one workspace.
                         </h1>
-                        <p className="mb-8 max-w-2xl text-lg text-gray-600 dark:text-gray-400">
-                            PseudoCompiler is a browser-based interpreter for experimenting with pseudocode. Type code in the editor and inspect the output in the terminal whilst being able to adjust syntax rules to match your preferred style.
-                        </p>
+                        <ul className="mb-8 max-w-2xl list-disc space-y-2 pl-5 text-lg text-gray-600 dark:text-gray-400">
+                            <li>PseudoCompiler is a browser-based interpreter for experimenting with pseudocode.</li>
+                            <li>Explore core programming concepts without the overhead of strict language syntax.</li>
+                            <li>Adjust syntax rules to match your preferred style.</li>
+                        </ul>
                         <button
                             type="button"
                             onClick={onEnter}
@@ -40,15 +42,14 @@ export default function LandingPage({ onEnter }: { onEnter: () => void }) {
                                     <FaCode aria-hidden="true" />
                                     <span>main.pseudo</span>
                                 </div>
-                                <pre className="whitespace-pre-wrap leading-7">
-{`# Try ideas quickly
+                                <pre className="whitespace-pre-wrap leading-7 text-gray-700 dark:text-gray-100">
+                                    <span className="text-[#608B4E]"># Try ideas quickly</span>
+{`
 int num = 10
 
-if num > 5 then
-    print "Number is greater than 5"
-else
-    print "Number is 5 or less"
-end if`}
+for i = 1 to 5
+    print num * i
+endfor`}
                                 </pre>
                             </div>
 
@@ -58,7 +59,11 @@ end if`}
                                     <span>Terminal</span>
                                 </div>
                                 <pre className="whitespace-pre-wrap leading-7">
-{`Number is greater than 5`}
+{`10
+20
+30
+40
+50`}
                                 </pre>
                             </div>
                         </div>

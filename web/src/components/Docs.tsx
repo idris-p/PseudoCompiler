@@ -3,11 +3,69 @@ import { CodeStyle } from "../../../core/src/CodeStyle";
 import { useState } from 'react';
 
 export default function Docs() {
-    const [codeStyle, setCodeStyle] = useState(config.codeStyle);
+    const [codeStyle] = useState(config.codeStyle);
+    const [contentsCollapsed, setContentsCollapsed] = useState(false);
+
+    const sections = [
+        { id: "comments", label: "Comments" },
+        { id: "variables", label: "Variables" },
+        { id: "print-statements", label: "Print Statements" },
+        { id: "input-statements", label: "Input Statements" },
+        { id: "if-statements", label: "If Statements" },
+        { id: "switch-statements", label: "Switch Statements" },
+        { id: "for-loops", label: "For Loops" },
+        { id: "while-loops", label: "While Loops" },
+        { id: "do-until-loops", label: "Do Until Loops" },
+        { id: "control-flow", label: "Control Flow" },
+        { id: "boolean-operators", label: "Boolean Operators" },
+        { id: "comparison-operators", label: "Comparison Operators" },
+        { id: "maths", label: "Maths" },
+        { id: "strings", label: "Strings" },
+        { id: "arrays", label: "Arrays" },
+        { id: "functions", label: "Functions" },
+    ];
+
+    const scrollToSection = (sectionId: string) => {
+        document.getElementById(sectionId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    };
 
     return (
-         <div className="h-full bg-gray-50 dark:bg-neutral-800 text-gray-700 dark:text-gray-300 p-8 overflow-y-scroll text-left">
-            <h1 className="text-2xl font-bold mb-6 text-center">
+         <div className="h-full bg-gray-50 dark:bg-neutral-800 text-gray-700 dark:text-gray-300 overflow-hidden">
+            <div className="h-full max-w-7xl mx-auto p-4 md:p-6 flex gap-6 text-left">
+                <aside className={`hidden md:block shrink-0 ${contentsCollapsed ? "w-24" : "w-64"}`}>
+                    <div className="sticky top-4 rounded-lg border text-center border-gray-200 dark:border-neutral-700 bg-white dark:bg-neutral-900/30 p-4">
+                        <div className={`flex items-center gap-2 ${contentsCollapsed ? "" : "justify-between mb-3"}`}>
+                            {!contentsCollapsed && <h2 className="text-lg font-bold">Contents</h2>}
+                            <button
+                                type="button"
+                                onClick={() => setContentsCollapsed(!contentsCollapsed)}
+                                className={`${contentsCollapsed ? "w-full" : ""} px-2 py-1 rounded font-extrabold hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors cursor-pointer`}
+                            >
+                                {contentsCollapsed ? ">" : "<"}
+                            </button>
+                        </div>
+                        {!contentsCollapsed && (
+                            <nav className="space-y-1">
+                                {sections.map((section) => (
+                                    <a
+                                        key={section.id}
+                                        href={`#${section.id}`}
+                                        onClick={(event) => {
+                                            event.preventDefault();
+                                            scrollToSection(section.id);
+                                        }}
+                                        className="block px-2 py-1 rounded text-sm hover:bg-gray-100 dark:hover:bg-neutral-800 transition-colors"
+                                    >
+                                        {section.label}
+                                    </a>
+                                ))}
+                            </nav>
+                        )}
+                    </div>
+                </aside>
+
+                <main className="flex-1 overflow-y-auto pr-1 md:pr-3">
+            <h1 className="text-2xl font-bold mb-6 text-center md:text-left">
                 Documentation
             </h1>
 
@@ -30,7 +88,7 @@ export default function Docs() {
                 </>
             )}
 
-            <label className="text-lg block mb-2 font-semibold">
+            <label id="comments" className="text-lg block mb-2 font-semibold">
                 Comments
             </label>
             <p className="mb-4">To write a comment, use the <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">{config.commentSyntax}</code> symbol followed by your comment text.</p>
@@ -39,7 +97,7 @@ export default function Docs() {
             </code>
             <br />
 
-            <label className="text-lg block mb-2 font-semibold">
+            <label id="variables" className="text-lg block mb-2 font-semibold">
                 Variable Declaration and Assignment
             </label>
             <p className="mb-4">To assign a value to a variable, use the <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">{config.assignmentSyntax}</code> symbol.</p>
@@ -117,7 +175,7 @@ export default function Docs() {
             </div>
             <br />
 
-            <label className="text-lg block mb-2 font-semibold">
+            <label id="print-statements" className="text-lg block mb-2 font-semibold">
                 Print Statements
             </label>
             <code className="bg-gray-200 dark:bg-neutral-700 p-4 rounded text-sm mb-4 block">
@@ -139,7 +197,7 @@ export default function Docs() {
             </code>
             <br />
 
-            <label className="text-lg block mb-2 font-semibold">
+            <label id="input-statements" className="text-lg block mb-2 font-semibold">
                 Input Statements
             </label>
             <code className="bg-gray-200 dark:bg-neutral-700 p-4 rounded text-sm mb-4 block">
@@ -148,7 +206,7 @@ export default function Docs() {
             <p className="mb-4">This will make a prompt appear for the user to enter their name in the terminal. Input is submitted when the user presses the Enter key.</p>
             <br />
 
-            <label className="text-lg block mb-2 font-semibold">
+            <label id="if-statements" className="text-lg block mb-2 font-semibold">
                 If Statements
             </label>
             <p className="mb-4">The <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">then</code>, <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">:</code> and <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">endif</code> syntax is entirely optional.</p>
@@ -200,7 +258,7 @@ export default function Docs() {
             }
             <br />
 
-            <label className="text-lg block mb-2 font-semibold">
+            <label id="switch-statements" className="text-lg block mb-2 font-semibold">
                 Switch Statements
             </label>
             <p className="mb-4">You can configure whether cases break automatically in settings. <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">{"end" + config.switchSyntax}</code> syntax is optional.</p>
@@ -266,7 +324,7 @@ export default function Docs() {
             }
             <br />
 
-            <label className="text-lg block mb-2 font-semibold">
+            <label id="for-loops" className="text-lg block mb-2 font-semibold">
                 For Loops
             </label>
 
@@ -369,7 +427,7 @@ export default function Docs() {
             <p className="mb-4">Either <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">for each</code>, <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">{config.foreachSyntax}</code> or <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">for</code> can be used to iterate over collections.</p>
             <br />
 
-            <label className="text-lg block mb-2 font-semibold">
+            <label id="while-loops" className="text-lg block mb-2 font-semibold">
                 While Loops
             </label>
 
@@ -461,7 +519,7 @@ export default function Docs() {
             )}
             <br />
 
-            <label className="text-lg block mb-2 font-semibold">
+            <label id="do-until-loops" className="text-lg block mb-2 font-semibold">
                 Do Until Loops
             </label>
 
@@ -527,23 +585,23 @@ export default function Docs() {
             )}
             <br />
 
-            <label className="text-lg block mb-2 font-semibold">
+            <label id="control-flow" className="text-lg block mb-2 font-semibold">
                 Control Flow Statements
             </label>
             <p className="mb-4"><code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">{config.breakSyntax}</code> - exits loop at the current iteration. <br/><code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">{config.continueSyntax}</code> - skips the current iteration and continues to the next one. <br/><code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">{config.passSyntax}</code> - does nothing and continues to the next statement.</p>
             <br/>
 
-            <label className="text-lg block mb-2 font-semibold">
+            <label id="boolean-operators" className="text-lg block mb-2 font-semibold">
                 Boolean Operators
             </label>
             <p className="mb-4">AND - <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">&&</code>, <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">&</code> or <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">and</code><br/>OR - <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">||</code>, <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">|</code> or <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">or</code><br/>NOT - <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">!</code>, <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">¬</code> or <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">not</code></p>
 
-            <label className="text-lg block mb-2 font-semibold">
+            <label id="comparison-operators" className="text-lg block mb-2 font-semibold">
                 Comparison Operators
             </label>
             <p className="mb-4">Equal to - <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">==</code> or <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">=</code><br/>Not equal to - <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded" style={{ fontVariantLigatures: "none" }}>!=</code> or <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">&lt;&gt;</code><br/>Greater than - <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">&gt;</code><br/>Less than - <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">&lt;</code><br/>Greater than or equal to - <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded" style={{ fontVariantLigatures: "none" }}>&gt;=</code><br/>Less than or equal to - <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded" style={{ fontVariantLigatures: "none" }}>&lt;=</code></p>
 
-            <label className="text-lg block mb-2 font-semibold">
+            <label id="maths" className="text-lg block mb-2 font-semibold">
                 Maths Operators and Functions
             </label>
             <p className="mb-4">Addition - <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">+</code><br/>Subtraction - <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">-</code><br/>Multiplication - <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">*</code> or <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">×</code><br/>Precise Division - <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">/</code> or <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">÷</code><br/>Integer Division - <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">//</code> or <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">div</code><br/>Modulus - <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">%</code> or <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">mod</code><br/>Exponentiation - <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">**</code>, <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">^</code> or use <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">pow()</code><br/><br/>Pi constant - <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">pi</code> or <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">π</code></p>
@@ -643,7 +701,7 @@ export default function Docs() {
             </table>
             <br />
 
-            <label className="text-lg block mb-2 font-semibold">
+            <label id="strings" className="text-lg block mb-2 font-semibold">
                 Strings
             </label>
             <p className="mb-4">Strings can be defined using either <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">'</code> or <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">"</code>. They can also be concatenated using the <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">+</code> operator.</p>
@@ -653,7 +711,7 @@ export default function Docs() {
             <p className="mb-4">Alternatively, you can use Python-style slicing: <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">str[start:end:step]</code>.</p>
             <br />
         
-            <label className="text-lg block mb-2 font-semibold">
+            <label id="arrays" className="text-lg block mb-2 font-semibold">
                 Arrays
             </label>
             <p className="mb-4">Arrays can be declared with or without assignation, similar to other variable types.</p>
@@ -788,7 +846,7 @@ export default function Docs() {
             <p className="mb-4">The <code className="bg-gray-200 dark:bg-neutral-700 p-1 rounded">range(start, end, step)</code> function returns an array of numbers from the start value to the end value with the specified step size. The inclusion of the start and end values depends on what is configured in the for loop settings.</p>
             <br />
 
-            <label className="text-lg block mb-2 font-semibold">
+            <label id="functions" className="text-lg block mb-2 font-semibold">
                 Functions
             </label>
             <p className="mb-4">Functions must be defined before they can be called.</p>
@@ -835,6 +893,8 @@ export default function Docs() {
             )}
             <br />
             <p className="mb-4">Variables defined within a function are local to that function and cannot be accessed from outside the function. Variables defined outside any function are global and can be accessed from anywhere in the program.</p>
+                </main>
+            </div>
         </div>
     );
 }
